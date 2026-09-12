@@ -5,7 +5,7 @@
 
 > Day 1 secured the edge. Day 2 assumes all of it was bypassed.
 
-**This is the answer key.** On the lab branch the nine Day 1 controls are locked on and
+**This is the answer key** for the lab on `ollama-real-model-support`. There the nine Day 1 controls are locked on and
 the nine interior controls start dark, for you to build. Here the exercise is finished:
 the `vulnerable_*` halves are deleted and CONTAIN, DETECT and JUDGE are simply how the
 code works.
@@ -13,7 +13,7 @@ code works.
 There is nothing to switch on, which is the point - a control with an off switch is a
 control someone will find switched off.
 
-| | lab branch | this branch |
+| | `ollama-real-model-support` | this branch |
 |---|---|---|
 | `attack all` | all 8 land past the edge | all 8 stop |
 | controls | 18 runtime toggles | 18 mechanisms, in the code |

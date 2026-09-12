@@ -1,9 +1,13 @@
 # Developing Secure AI Agents - SOLUTION BUILD
 
-> **This branch is the answer key.** The lab lives on `main`.
+> **This branch is the answer key** for the lab on `ollama-real-model-support`.
+>
+> Three branches, each building on the last: `main` is the original lab;
+> `ollama-real-model-support` is that lab with the Ollama/real-model work; this branch
+> is that lab, solved.
 
 A two-day workshop for engineers who are shipping agentic systems, built around **Kestrel
-Goat** - on `main`, a deliberately vulnerable e-commerce support agent in the tradition of
+Goat** - on the lab branches, a deliberately vulnerable e-commerce support agent in the tradition of
 [OWASP NodeGoat](https://github.com/OWASP/NodeGoat), targeting the vulnerabilities that
 only exist once a language model can **act**.
 
@@ -72,8 +76,8 @@ Every attack in both days is read the same way: **entry point → execution stag
 
 ## How this branch differs from the lab
 
-On `main`, every control is a runtime switch between two functions that both live in the
-source:
+On the lab branches, every control is a runtime switch between two functions that both
+live in the source:
 
 ```python
 def vulnerable_check(text): ...    # what most teams actually shipped
@@ -88,12 +92,13 @@ Here there is one function, and it is the second one. The switch, the profiles, 
 control with an off switch is a control someone will find switched off.
 
 ```
-git diff main..ollama-solution -- workshop-day1/agent workshop-day2/agent
+git diff ollama-real-model-support..ollama-solution -- workshop-day1/agent workshop-day2/agent
 ```
 
-That diff is the whole answer key.
+That diff is the whole answer key. Diff against `main` instead and you also pick up the
+Ollama work this branch was cut from, which is a separate change.
 
-| | `main` | this branch |
+| | `ollama-real-model-support` | this branch |
 |---|---|---|
 | Day 1 `attack all` | all 7 land | **all 7 stop** |
 | Day 2 `attack all` | all 8 land past the edge | **all 8 stop** |
@@ -186,7 +191,7 @@ the bait this run. Real models are not deterministic: re-run it, or try a larger
 
 ## Safety
 
-On `main` both labs are **deliberately vulnerable software**: unscoped SQL, a
+On the lab branches both labs are **deliberately vulnerable software**: unscoped SQL, a
 blank-cheque tool, an SSRF gadget and an unguarded checkpoint store, all on purpose.
 This branch removes those, but it is still a **teaching model** rather than a product -
 the seeded prompt-injection payloads are still in the store, the "network" calls are

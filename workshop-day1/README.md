@@ -2,7 +2,7 @@
 
 > Assume the model is already compromised. **Constrain what it can reach and do.**
 
-**This is the answer key.** On the lab branch this folder ships a deliberately
+**This is the answer key** for the lab on `ollama-real-model-support`. There this folder ships a deliberately
 vulnerable e-commerce support agent, with every control as a runtime toggle and both
 implementations side by side in the source. Here the exercise is finished: the
 `vulnerable_*` halves are deleted and the controls are simply how the code works.
@@ -10,7 +10,7 @@ implementations side by side in the source. Here the exercise is finished: the
 There is nothing to switch on, which is the point - a control with an off switch is a
 control someone will find switched off.
 
-| | lab branch | this branch |
+| | `ollama-real-model-support` | this branch |
 |---|---|---|
 | `attack all` | all 7 land | all 7 stop |
 | controls | 9 runtime toggles | 9 mechanisms, in the code |
@@ -197,8 +197,9 @@ def check(text) -> Verdict:
     """Three concentric layers, outermost first."""
 ```
 
-`git diff main..ollama-solution -- workshop-day1/agent/` is the whole answer key in one
-command. To read a control in place:
+`git diff ollama-real-model-support..ollama-solution -- workshop-day1/agent/` is the whole
+answer key in one command. (Diff against `main` and you also pick up the Ollama work this
+branch was cut from.) To read a control in place:
 
 ```
 python kestrel.py controls        # each mechanism and the file it lives in
