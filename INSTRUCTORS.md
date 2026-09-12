@@ -40,6 +40,16 @@ python kestrel.py test       # 14 passed
 python kestrel.py attack all # 7/7 stopped
 ```
 
+Or open the repo in a dev container — VS Code with the Dev Containers extension, or GitHub
+Codespaces — and pick **Kestrel Goat SOLUTION - Day 1** or **- Day 2**. Either installs
+both labs, seeds both databases and forwards port 8000, and the banner it prints says
+plainly that this is the answer key rather than the lab, so nobody provisions the wrong
+branch on the morning of day one. Config is in [`.devcontainer/`](.devcontainer/).
+
+The container keeps its `.venv` in a named volume, so it never disturbs a virtualenv you
+built on your host — you can have the lab checked out and running natively while the
+answer key runs in a container.
+
 A **LANDED** result here is a regression, not a lesson. The runner says so and exits
 non-zero, so this branch is also the thing to point CI at.
 
@@ -202,6 +212,7 @@ model of a support agent. Bind to `127.0.0.1`.
 | Symptom | Fix |
 |---|---|
 | `No .venv yet` | `python kestrel.py setup` |
+| Dev container: wrong branch's lab | The banner names the branch. `git switch ollama-real-model-support` and rebuild. |
 | `ModuleNotFoundError` | Stale checkout — `git pull`, then `python kestrel.py setup` |
 | `python: command not found` (macOS/Linux) | Use `python3` |
 | `Address already in use` | `python kestrel.py run --port 8010` |

@@ -141,7 +141,11 @@ def cmd_setup(_argv: list[str]) -> int:
     if sys.version_info < MIN_PY:
         print(f"Python {MIN_PY[0]}.{MIN_PY[1]}+ required; this is {platform.python_version()}")
         return 1
-    if not VENV.exists():
+    # Test for the interpreter, not the directory. An empty .venv/ is a normal
+    # state - a dev container mounts a volume there, and an interrupted setup
+    # leaves one behind - and `python -m venv` is happy to populate it. Checking
+    # VENV.exists() would skip creation and then fail on a pip that isn't there.
+    if not venv_python().exists():
         print(f"creating virtual environment in {VENV}")
         if subprocess.call([sys.executable, "-m", "venv", str(VENV)]) != 0:
             print("could not create the virtual environment.")
