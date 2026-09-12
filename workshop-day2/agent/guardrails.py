@@ -21,7 +21,6 @@ import math
 import re
 from collections import Counter
 
-from config import settings
 from agent import db
 from agent.models import Session, ToolCall, Verdict
 from agent.telemetry import board
@@ -53,11 +52,7 @@ def foreign_customer_ids(text: str, session: Session) -> list[str]:
 # what it SAYS
 # ======================================================================================
 
-def vulnerable_check_reply(text: str, session: Session) -> Verdict:
-    return Verdict.allow("no output guardrail", layer="none")
-
-
-def secure_check_reply(text: str, session: Session) -> Verdict:
+def _check_reply(text: str, session: Session) -> Verdict:
     if SYSTEM_PROMPT_FINGERPRINT in text:
         return Verdict.block("the system prompt is in the reply", layer="output")
     if m := SECRET_RE.search(text):
@@ -70,12 +65,11 @@ def secure_check_reply(text: str, session: Session) -> Verdict:
 
 
 def check_reply(text: str, session: Session) -> Verdict:
-    verdict = (secure_check_reply(text, session) if settings.on("SECURE_OUTPUT_GUARD")
-               else vulnerable_check_reply(text, session))
+    verdict = _check_reply(text, session)
     if not verdict.allowed:
         board.light("output_guard", "amber", verdict.reason)
         board.record(session=session.id, principal=session.principal.id, node="output",
-                     verdict="blocked", severity="warn", control="SECURE_OUTPUT_GUARD",
+                     verdict="blocked", severity="warn", control="output-guard",
                      detail=verdict.reason)
     return verdict
 
@@ -84,11 +78,7 @@ def check_reply(text: str, session: Session) -> Verdict:
 # what it DOES
 # ======================================================================================
 
-def vulnerable_check_tool_args(call: ToolCall, session: Session) -> Verdict:
-    return Verdict.allow("no output guardrail on tool arguments", layer="none")
-
-
-def secure_check_tool_args(call: ToolCall, session: Session) -> Verdict:
+def _check_tool_args(call: ToolCall, session: Session) -> Verdict:
     """A payload hidden inside an innocent-looking parameter.
 
     This is the half people forget. The call is schema-valid, the authorization
@@ -118,11 +108,10 @@ def secure_check_tool_args(call: ToolCall, session: Session) -> Verdict:
 
 
 def check_tool_args(call: ToolCall, session: Session) -> Verdict:
-    verdict = (secure_check_tool_args(call, session) if settings.on("SECURE_OUTPUT_GUARD")
-               else vulnerable_check_tool_args(call, session))
+    verdict = _check_tool_args(call, session)
     if not verdict.allowed:
         board.light("output_guard", "amber", verdict.reason)
         board.record(session=session.id, principal=session.principal.id, node="output",
                      tool=call.name, verdict="blocked", severity="alert",
-                     control="SECURE_OUTPUT_GUARD", detail=verdict.reason)
+                     control="output-guard", detail=verdict.reason)
     return verdict

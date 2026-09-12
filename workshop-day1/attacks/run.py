@@ -1,8 +1,11 @@
-"""Attack runner.
+"""Attack runner - SOLUTION BUILD.
 
-    python kestrel.py attack a1            run one attack against the current build
+    python kestrel.py attack a1            run one attack
     python kestrel.py attack all           run the whole catalogue
-    python kestrel.py attack a1 --secure   run it against the hardened build
+
+There is no --secure flag here, and no --control: this build has one
+configuration and every attack in the catalogue is meant to stop against it.
+A LANDED result is a regression, and the exit code says so.
 
 Output is deliberately plain ASCII so it renders the same on macOS Terminal,
 Windows PowerShell and a Linux console.
@@ -12,7 +15,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from config import CONTROLS, settings
+from config import settings
 from agent import db, graph, intake
 from agent.models import Principal
 from agent.telemetry import board
@@ -29,22 +32,19 @@ def principal_for(customer_id: str) -> Principal:
 
 
 def _why_stopped(attack: Attack) -> str:
-    """Say WHY it did not land - and do not take credit that is not owed.
+    """Name the mechanisms that were standing in this attack's way.
 
-    With the mock, "it did not land" means a control stopped it: the model is
-    deterministic, so nothing else could have changed. With a real model it can
-    also mean the model simply did not manage the attack this run - a small local
-    model often cannot chain "look the order up, then use the URL from the row".
-    Reporting that as a control working is how a lab teaches a false lesson.
+    Worth printing even though they are always on: "it did not land" is only
+    evidence if you can say what stopped it. On a real model it can also mean the
+    model simply did not manage the attack this run, so the wording does not
+    promise more than it knows.
     """
-    on = [c for c in attack.closed_by if settings.on(c)]
-    if on:
-        return f"stopped by: {', '.join(on)}"
+    where = ", ".join(attack.closed_by)
     if settings.llm_provider == "mock":
-        return "stopped by: the controls above"
-    return (f"NOT stopped by a control - none of {attack.id}'s controls are on. "
-            f"{settings.active_model} did not take the bait this run. Real models "
-            f"are not deterministic: re-run it, or try a larger one.")
+        return f"stopped by: {where}"
+    return (f"stopped. In its way: {where}. With a real model, note that "
+            f"{settings.active_model} may also simply not have managed it this "
+            f"run - re-run to see.")
 
 
 def run_one(attack: Attack, verbose: bool = True) -> dict:
@@ -86,9 +86,9 @@ def run_one(attack: Attack, verbose: bool = True) -> dict:
         if not landed:
             print(f"  {_why_stopped(attack)}")
         else:
-            off = [c for c in attack.closed_by if not settings.on(c)]
-            print(f"  fix it with: {', '.join(off)}")
-            print(f"  step by step: tutorials/{attack.tutorial}.md")
+            print(f"  REGRESSION - this build is meant to stop {attack.id}.")
+            print(f"  what should have caught it: {', '.join(attack.closed_by)}")
+            print(f"  background: tutorials/{attack.tutorial}.md")
         print(BAR)
         print()
 
@@ -125,10 +125,7 @@ def _run_payload_set(attack: Attack, verbose: bool) -> dict:
     if verbose:
         print(DASH)
         got_through = [k for k, allowed in results.items() if allowed]
-        if not settings.on("SECURE_INTAKE"):
-            print("  Intake validation is OFF - all five went straight through.")
-            print("  Turn it on (--control SECURE_INTAKE) and run this again.")
-        elif got_through == ["P5-natural"]:
+        if got_through == ["P5-natural"]:
             print("  Four of five blocked. The one that got through is structurally")
             print("  IDENTICAL to a real customer request - there is nothing malformed")
             print("  to catch. Validation cannot read intent it cannot see.")
@@ -152,25 +149,10 @@ def _run_payload_set(attack: Attack, verbose: bool) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kestrel attack", description=__doc__)
     ap.add_argument("target", nargs="?", default="all", help="attack id (a1..a7) or 'all'")
-    ap.add_argument("--secure", action="store_true", help="run against the hardened build")
-    ap.add_argument("--vulnerable", action="store_true", help="run against the shipped build")
-    ap.add_argument("--control", action="append", default=[],
-                    help="turn one control on, e.g. --control SECURE_TENANCY")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
-    if args.secure:
-        settings.apply_profile("secure")
-    elif args.vulnerable:
-        settings.apply_profile("vulnerable")
-    for c in args.control:
-        if c not in CONTROLS:
-            print(f"unknown control {c!r}. known: {', '.join(CONTROLS)}")
-            return 2
-        settings.set(c, True)
-
-    on = [c for c in CONTROLS if settings.on(c)]
-    print(f"model={settings.llm_provider}  controls ON: {', '.join(on) if on else 'NONE (shipped build)'}\n")
+    print(f"model={settings.active_model}  |  solution build: every control is in the code\n")
 
     targets = ORDER if args.target == "all" else [args.target.lower()]
     unknown = [t for t in targets if t not in ATTACKS]
@@ -184,9 +166,9 @@ def main(argv: list[str] | None = None) -> int:
     print(DASH)
     print(f"  {len(results) - len(landed)}/{len(results)} attacks stopped.")
     if landed:
-        print(f"  still landing: {', '.join(landed)}")
+        print(f"  REGRESSION - these landed against the solution build: {', '.join(landed)}")
     else:
-        print("  Every attack in the catalogue is stopped. That is Workshop 1 complete.")
+        print("  Every attack in the catalogue is stopped, as this build intends.")
     print(DASH)
     return 1 if landed else 0
 

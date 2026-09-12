@@ -4,10 +4,9 @@ This module holds the single most important lesson of Day 1: the tenancy filter
 lives HERE, below the model, where the model can neither reach it nor override it.
 (Day 1, slide 50, rule 2)
 
-Two implementations of every read sit side by side:
-
-    vulnerable_*   what the app ships with. No idea whose data it is returning.
-    secure_*       scoped to the authenticated principal, always.
+On the lab branch two implementations of every read sat side by side - an unscoped
+one and a filtered one - with a switch to choose. Here there is one, and it is
+always scoped to the authenticated principal.
 """
 from __future__ import annotations
 
@@ -172,7 +171,7 @@ def owners_in(text: str) -> dict[str, str]:
 
     This works because the lab's store is tiny and seeded. Do not read it as a
     pattern - a real deployment tags rows at the data layer (see
-    secure_orders_for) rather than matching strings after the fact.
+    orders_for) rather than matching strings after the fact.
     """
     low = (text or "").lower()
     found: dict[str, str] = {}
@@ -182,29 +181,16 @@ def owners_in(text: str) -> dict[str, str]:
     return found
 
 
-def vulnerable_query(sql: str) -> list[dict[str, Any]]:
-    """VULNERABLE (Day 1, slides 10 + 38).
-
-    The tool that calls this accepts a free-form SQL string built by the model.
-    Two failures in one line:
-      1. the query never asks WHOSE orders these are - no tenancy filter;
-      2. the model can express any query at all - a blank cheque.
-    """
-    conn = connect()
-    try:
-        return [dict(r) for r in conn.execute(sql).fetchall()]   # noqa: S608 - the lesson
-    except sqlite3.Error as exc:
-        return [{"error": str(exc)}]
-    finally:
-        conn.close()
-
-
-def secure_orders_for(principal: Principal, order_id: str | None = None) -> list[dict[str, Any]]:
-    """SECURE (Day 1, slide 50, rule 2).
+def orders_for(principal: Principal, order_id: str | None = None) -> list[dict[str, Any]]:
+    """The tenancy filter.  (Day 1, slide 50, rule 2)
 
     The ONLY way to reach orders. The customer_id comes from the authenticated
     session, never from the model, and it is not an optional keyword argument -
     there is no code path here that returns another customer's rows.
+
+    The free-form `vulnerable_query(sql)` this build used to carry is gone, not
+    guarded. A filter you can forget to apply is a filter you will forget to
+    apply; the fix is to delete the path that skips it.
     """
     if principal.customer_id is None:
         return []

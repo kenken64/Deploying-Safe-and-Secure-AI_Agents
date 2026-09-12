@@ -13,40 +13,25 @@ file: the output guardrail IS step 4, behavioural telemetry IS step 5.
 """
 from __future__ import annotations
 
-from config import settings
 from agent import authz, db, directives, tools
 from agent.models import (Blocked, Content, Denied, Session, ToolCall, ToolResult)
 from agent.telemetry import board
 
 
-def vulnerable_execute(call: ToolCall, session: Session) -> ToolResult:
-    """VULNERABLE: the model names a tool, the tool runs. That is the entire path.
+def execute(call: ToolCall, session: Session) -> ToolResult:
+    """The five steps, in order, for every call.
 
-    No argument validation, no authorization, no result validation, and the only
-    log line is whatever the tool felt like returning.
+    There is no second path. The lab branch kept a `vulnerable_execute` beside
+    this one - name a tool, run the tool - and a switch to pick between them;
+    a chokepoint you can route around is not a chokepoint.
     """
-    spec = tools.registry().get(call.name)
-    if spec is None:
-        return ToolResult(ok=False, error=f"no such tool: {call.name}")
-    result = spec.fn(call.args, session)
-    board.record(session=session.id, principal=session.principal.id, node="tool",
-                 tool=call.name, args_fingerprint=call.fingerprint(),
-                 records_touched=result.records_touched, egress_host=result.egress_host,
-                 detail=result.text[:200])
-    _watch_data_boundary(session, call, result)
-    _watch_egress(session, call, result)
-    return result
-
-
-def secure_execute(call: ToolCall, session: Session) -> ToolResult:
-    """SECURE: the five steps, in order, for every call."""
     registry = tools.registry()
 
     # step 0 - allowlist the tool NAME itself. Fails safe on anything invented.
     spec = registry.get(call.name)
     if spec is None:
         board.light("tool_boundary", "amber", f"unknown tool {call.name}")
-        raise Blocked("SECURE_EXECUTOR", f"tool {call.name!r} is not on the registry")
+        raise Blocked("executor", f"tool {call.name!r} is not on the registry")
 
     # step 1 - validate args against the declared schema
     _validate_args(call, spec)
@@ -58,14 +43,13 @@ def secure_execute(call: ToolCall, session: Session) -> ToolResult:
     result = spec.fn(call.args, session)
 
     # step 4 - validate what comes back (surface 4, the side door - slide 40)
-    if settings.on("SECURE_TOOL_RESULTS"):
-        result = _validate_result(result, call)
+    result = _validate_result(result, call)
 
     # step 5 - log
     board.record(session=session.id, principal=session.principal.id, node="tool",
                  tool=call.name, args_fingerprint=call.fingerprint(),
                  records_touched=result.records_touched, egress_host=result.egress_host,
-                 detail=result.text[:200], control="SECURE_EXECUTOR")
+                 detail=result.text[:200], control="executor")
     _watch_data_boundary(session, call, result)
     _watch_egress(session, call, result)
     return result
@@ -82,27 +66,27 @@ def _validate_args(call: ToolCall, spec: tools.ToolSpec) -> None:
             # the hardened build look like it is still bleeding.
             board.light("schema_check", "amber",
                         f"undeclared argument {key!r} on {call.name} - call refused")
-            raise Blocked("SECURE_EXECUTOR", f"undeclared argument {key!r} on {call.name}")
+            raise Blocked("executor", f"undeclared argument {key!r} on {call.name}")
     for key in schema.get("required", []):
         if key not in call.args:
-            raise Blocked("SECURE_EXECUTOR", f"missing required argument {key!r}")
+            raise Blocked("executor", f"missing required argument {key!r}")
     for key, value in call.args.items():
         rule = props[key]
         kind = rule.get("type")
         if kind == "string" and not isinstance(value, str):
-            raise Blocked("SECURE_EXECUTOR", f"{key} must be a string")
+            raise Blocked("executor", f"{key} must be a string")
         if kind == "integer" and not isinstance(value, int):
-            raise Blocked("SECURE_EXECUTOR", f"{key} must be an integer")
+            raise Blocked("executor", f"{key} must be an integer")
         if "enum" in rule and value not in rule["enum"]:
-            raise Blocked("SECURE_EXECUTOR", f"{key}={value!r} not in {rule['enum']}")
+            raise Blocked("executor", f"{key}={value!r} not in {rule['enum']}")
         if "pattern" in rule:
             import re
             if not re.match(rule["pattern"], str(value)):
-                raise Blocked("SECURE_EXECUTOR", f"{key}={value!r} fails {rule['pattern']}")
+                raise Blocked("executor", f"{key}={value!r} fails {rule['pattern']}")
         if "minimum" in rule and isinstance(value, int) and value < rule["minimum"]:
-            raise Blocked("SECURE_EXECUTOR", f"{key} below minimum")
+            raise Blocked("executor", f"{key} below minimum")
         if "maximum" in rule and isinstance(value, int) and value > rule["maximum"]:
-            raise Blocked("SECURE_EXECUTOR", f"{key} above maximum")
+            raise Blocked("executor", f"{key} above maximum")
 
 
 def _validate_result(result: ToolResult, call: ToolCall) -> ToolResult:
@@ -116,7 +100,7 @@ def _validate_result(result: ToolResult, call: ToolCall) -> ToolResult:
         board.light("tool_boundary", "amber", f"instruction-shaped tool result from {call.name}")
         board.record(session="-", principal="-", node="tool_result", tool=call.name,
                      detail=f"neutralised directives in tool result: {found}",
-                     verdict="sanitised", severity="warn", control="SECURE_TOOL_RESULTS")
+                     verdict="sanitised", severity="warn", control="tool-result-check")
         result.text = directives.strip(result.text)
     return result
 
@@ -176,7 +160,3 @@ def _watch_data_boundary(session: Session, call: ToolCall, result: ToolResult) -
                      tool=call.name, records_touched=count, verdict="cross-tenant",
                      severity="alert", detail=f"data owned by {ids} reached {me}")
 
-
-def execute(call: ToolCall, session: Session) -> ToolResult:
-    return (secure_execute(call, session) if settings.on("SECURE_EXECUTOR")
-            else vulnerable_execute(call, session))

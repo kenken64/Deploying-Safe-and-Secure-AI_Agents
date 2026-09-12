@@ -247,17 +247,14 @@ def cmd_model(argv: list[str]) -> int:
 
 
 def cmd_controls(_argv: list[str]) -> int:
-    from config import CONTROLS, settings
-    print(f"{'control':<28} {'state':<6} {'when':<8} what it does")
+    from config import MECHANISMS
+    print(f"{'block':<6} {'lives in':<24} what it does")
     print("-" * 96)
-    for key, meta in CONTROLS.items():
-        when = "day 1" if meta["locked"] else f"block {meta['block']}"
-        print(f"{key:<28} {'ON' if settings.on(key) else 'off':<6} "
-              f"{when:<8} {meta['label']}")
+    for m in MECHANISMS:
+        print(f"{m['block']:<6} {m['lives_in']:<24} {m['label']}")
     print("-" * 96)
-    print("Day 1's nine controls are LOCKED ON - today starts where yesterday ended.")
-    print("Turn one on for a single run:   python kestrel.py attack b1 --control SECURE_QUARANTINE")
-    print("Or toggle them live in the control room at /console")
+    print("There is no state column and no --control flag: this is the solution build,")
+    print("so every one of these is in the code rather than behind a switch.")
     return 0
 
 

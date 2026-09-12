@@ -79,7 +79,7 @@ def node_read_message(state: KestrelState) -> dict:
     verdict = intake.check(text)
     board.record(session=session.id, principal=session.principal.id, node="read_message",
                  detail=text[:160], verdict="blocked" if not verdict.allowed else "ok",
-                 control="SECURE_INTAKE" if settings.on("SECURE_INTAKE") else "",
+                 control="intake",
                  severity="warn" if not verdict.allowed else "info")
 
     if not verdict.allowed:
@@ -112,12 +112,7 @@ def node_retrieve(state: KestrelState) -> dict:
     for c in items:
         board.record(session=session.id, principal=session.principal.id, node="retrieve",
                      detail=f"{c.label} pulled into context as origin={c.origin}",
-                     control="SECURE_PROVENANCE" if settings.on("SECURE_PROVENANCE") else "",
-                     verdict="tagged" if c.origin == "retrieval" else "UNTAGGED",
-                     severity="info" if c.origin == "retrieval" else "warn")
-        if c.origin == "operator":
-            board.light("input_validation", "amber",
-                        f"{c.label} entered context untagged, as if the operator wrote it")
+                     control="provenance", verdict="tagged", severity="info")
     return {"context": [_c(c) for c in items],
             "transcript": [_line("retrieval", f"{len(items)} help-centre article(s) added to context")]}
 

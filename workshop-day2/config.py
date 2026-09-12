@@ -1,57 +1,46 @@
-"""Kestrel Goat (Day 2 - the interior) - central configuration.
+"""Kestrel Goat (Day 2 - the interior) - SOLUTION BUILD, central configuration.
 
-    Day 1 secured the edge. Today we assume all of it was bypassed.
+    Day 1 secured the edge. Day 2 assumes all of it was bypassed.
 
-So this build STARTS where Day 1 ended. Every Day 1 control is already on, and is
-marked `locked` below - not because you cannot turn it off, but because turning it
-off is not today's lesson. Today's question is different:
+The lab branch made all eighteen controls runtime toggles - the nine Day 1 ones
+locked on, the nine interior ones dark until you built them. This branch is where
+that exercise ends up: the vulnerable halves are deleted, and CONTAIN, DETECT and
+JUDGE are simply how the code works.
 
-    not "how do we keep them out"
-    but "given that they're in - how much damage, will we notice, and what did
-         we refuse to automate"
+There is nothing to switch on, which is the point - a control with an off switch
+is a control someone will find switched off.
 
-The nine Day 2 controls start OFF. Those are the ones you build today.
+`MECHANISMS` below is documentation, not configuration. The console renders it so
+the room can see what is holding, and every entry names the file it lives in.
 """
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
-CONTROLS: dict[str, dict] = {
-    # ---- Day 1, the edge. Already yours. Locked on. --------------------------------
-    "SECURE_INTAKE":            dict(day=1, block=2,  locked=True,  label="Layered intake validation",          tutorial="v02-direct-injection"),
-    "SECURE_PROVENANCE":        dict(day=1, block=2,  locked=True,  label="Provenance tagging of retrieval",    tutorial="v03-indirect-injection"),
-    "SECURE_TOOLS":             dict(day=1, block=3,  locked=True,  label="Narrow typed tools",                 tutorial="v05-tool-argument-injection"),
-    "SECURE_EGRESS":            dict(day=1, block=3,  locked=True,  label="URL allowlist (anti-SSRF)",          tutorial="v07-ssrf-egress"),
-    "SECURE_TOOL_RESULTS":      dict(day=1, block=3,  locked=True,  label="Tool-result validation",             tutorial="v06-tool-result-side-door"),
-    "SECURE_EXECUTOR":          dict(day=1, block=3,  locked=True,  label="Secure tool executor chokepoint",    tutorial="v05-tool-argument-injection"),
-    "SECURE_AUTHZ":             dict(day=1, block=4,  locked=True,  label="Action-time RBAC (3 levels)",        tutorial="v04-authz-at-action-time"),
-    "SECURE_TENANCY":           dict(day=1, block=4,  locked=True,  label="Tenancy filter at the data layer",   tutorial="v01-cross-tenant-leak"),
-    "SECURE_NO_CREDS_IN_STATE": dict(day=1, block=4,  locked=True,  label="Credentials out of the context",     tutorial="v04-authz-at-action-time"),
-
-    # ---- Day 2, the interior. CONTAIN - DETECT - JUDGE. Build these today. ---------
-    "SECURE_STATE_SPLIT":       dict(day=2, block=5,  locked=False, label="Trusted/untrusted state split",      tutorial="v08-state-poisoning"),
-    "SECURE_THREAD_IDS":        dict(day=2, block=5,  locked=False, label="Random thread IDs bound to identity",tutorial="v09-thread-id-guessing"),
-    "SECURE_MEMORY_WRITES":     dict(day=2, block=5,  locked=False, label="Memory write governance",            tutorial="v10-memory-landmine"),
-    "SECURE_QUARANTINE":        dict(day=2, block=6,  locked=False, label="Quarantine node on sub-agents",      tutorial="v11-trust-inheritance"),
-    "SECURE_PRIV_SEP":          dict(day=2, block=6,  locked=False, label="Privilege separation reader/actor",  tutorial="v11-trust-inheritance"),
-    "SECURE_OUTPUT_GUARD":      dict(day=2, block=7,  locked=False, label="Output guardrails (says + does)",    tutorial="v12-silent-exfiltration"),
-    "SECURE_TELEMETRY":         dict(day=2, block=8,  locked=False, label="Behavioural observability",          tutorial="v13-looks-like-normal-traffic"),
-    "SECURE_HITL":              dict(day=2, block=9,  locked=False, label="Human interrupt before the action",  tutorial="v14-irreversible-action"),
-    "SECURE_LIMITS":            dict(day=2, block=10, locked=False, label="Five rate & cost limits",            tutorial="v15-cost-exhaustion"),
-}
-
-DAY1 = [k for k, v in CONTROLS.items() if v["day"] == 1]
-DAY2 = [k for k, v in CONTROLS.items() if v["day"] == 2]
-
-PROFILES: dict[str, list[str]] = {
-    # How today starts: the edge is secured, the interior is dark.
-    "day1-only": DAY1,
-    # What Workshop 2 asks you to reach.
-    "secure":    DAY1 + DAY2,
-    # For the curious: what happens with nothing at all. Day 1 all over again.
-    "naked":     [],
-}
+#: What protects this build, and where to read it. Descriptive only.
+MECHANISMS: list[dict] = [
+    # ---- Day 1, the edge -------------------------------------------------------------
+    dict(day=1, block=2,  label="Layered intake validation",          lives_in="agent/intake.py",     tutorial="v02-direct-injection"),
+    dict(day=1, block=2,  label="Provenance tagging of retrieval",    lives_in="agent/retrieval.py",  tutorial="v03-indirect-injection"),
+    dict(day=1, block=3,  label="Narrow typed tools",                 lives_in="agent/tools.py",      tutorial="v05-tool-argument-injection"),
+    dict(day=1, block=3,  label="URL allowlist (anti-SSRF)",          lives_in="agent/tools.py",      tutorial="v07-ssrf-egress"),
+    dict(day=1, block=3,  label="Tool-result validation",             lives_in="agent/executor.py",   tutorial="v06-tool-result-side-door"),
+    dict(day=1, block=3,  label="Tool executor chokepoint",           lives_in="agent/executor.py",   tutorial="v05-tool-argument-injection"),
+    dict(day=1, block=4,  label="Action-time RBAC (3 levels)",        lives_in="agent/authz.py",      tutorial="v04-authz-at-action-time"),
+    dict(day=1, block=4,  label="Tenancy filter at the data layer",   lives_in="agent/db.py",         tutorial="v01-cross-tenant-leak"),
+    dict(day=1, block=4,  label="Credentials out of the context",     lives_in="agent/graph.py",      tutorial="v04-authz-at-action-time"),
+    # ---- Day 2, the interior. CONTAIN - DETECT - JUDGE. ------------------------------
+    dict(day=2, block=5,  label="Trusted/untrusted state split",      lives_in="agent/state.py",      tutorial="v08-state-poisoning"),
+    dict(day=2, block=5,  label="Random thread IDs bound to identity",lives_in="agent/memory.py",     tutorial="v09-thread-id-guessing"),
+    dict(day=2, block=5,  label="Memory write governance",            lives_in="agent/memory.py",     tutorial="v10-memory-landmine"),
+    dict(day=2, block=6,  label="Quarantine node on sub-agents",      lives_in="agent/quarantine.py", tutorial="v11-trust-inheritance"),
+    dict(day=2, block=6,  label="Privilege separation reader/actor",  lives_in="agent/helpers.py",    tutorial="v11-trust-inheritance"),
+    dict(day=2, block=7,  label="Output guardrails (says + does)",    lives_in="agent/guardrails.py", tutorial="v12-silent-exfiltration"),
+    dict(day=2, block=8,  label="Behavioural observability",          lives_in="agent/telemetry.py",  tutorial="v13-looks-like-normal-traffic"),
+    dict(day=2, block=9,  label="Human interrupt before the action",  lives_in="agent/hitl.py",       tutorial="v14-irreversible-action"),
+    dict(day=2, block=10, label="Five rate & cost limits",            lives_in="agent/limits.py",     tutorial="v15-cost-exhaustion"),
+]
 
 
 @dataclass
@@ -81,35 +70,11 @@ class Settings:
     # large refund interrupted.
     refund_autonomous_ceiling_cents: int = 5_000
 
-    controls: dict[str, bool] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        for key, meta in CONTROLS.items():
-            default = "1" if meta["locked"] else "0"
-            self.controls.setdefault(key, os.getenv(key, default).lower() in ("1", "true", "yes", "on"))
-
     @property
     def active_model(self) -> str:
         if self.llm_provider == "mock":
             return "mock"
         return self.ollama_model if self.llm_provider == "ollama" else self.model
-
-    def on(self, key: str) -> bool:
-        if key not in CONTROLS:
-            raise KeyError(f"unknown control {key!r}")
-        return self.controls[key]
-
-    def set(self, key: str, value: bool) -> None:
-        if key not in CONTROLS:
-            raise KeyError(f"unknown control {key!r}")
-        self.controls[key] = bool(value)
-
-    def apply_profile(self, name: str) -> None:
-        if name not in PROFILES:
-            raise KeyError(f"unknown profile {name!r}; try {list(PROFILES)}")
-        wanted = set(PROFILES[name])
-        for key in CONTROLS:
-            self.controls[key] = key in wanted
 
     def snapshot(self) -> dict:
         d = asdict(self)

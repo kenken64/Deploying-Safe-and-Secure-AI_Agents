@@ -23,7 +23,6 @@ time, because that is where they are containment rather than hygiene:
 """
 from __future__ import annotations
 
-from config import settings
 from agent.models import TRUSTED_ORIGINS, Content
 from agent.telemetry import board
 
@@ -43,15 +42,11 @@ def from_dict(d: dict) -> Content:
 def place(state: dict, items: list[Content]) -> dict:
     """Route new content into the right zone.
 
-    VULNERABLE (split off): everything lands in one flat `context` list, in
-    arrival order, indistinguishable.
-
-    SECURE (split on): trusted and untrusted are different fields, and content
-    can only enter the trusted zone if its ORIGIN says it may.
+    Trusted and untrusted are different fields, and content can only enter the
+    trusted zone if its ORIGIN says it may. The lab branch had them share one
+    flat `context` list in arrival order - which is precisely why the agent
+    there could not tell instruction from data.
     """
-    if not settings.on("SECURE_STATE_SPLIT"):
-        return {"context": [to_dict(c) for c in items]}
-
     trusted, untrusted = [], []
     for c in items:
         (trusted if c.origin in TRUSTED_ORIGINS else untrusted).append(to_dict(c))
@@ -62,22 +57,9 @@ def assert_containment(state: dict, session) -> None:
     """The proof that the split is real.
 
     Walk the trusted zone and check that nothing in it came from an untrusted
-    origin. With the split off, retrieved articles and sub-agent summaries are
-    written into context claiming origin="operator" - and this check fails,
-    which is the whole point.
+    origin. It should never fire - it is here because a containment claim you
+    do not assert at runtime is a containment claim you do not have.
     """
-    if not settings.on("SECURE_STATE_SPLIT"):
-        leaked = [c for c in state.get("context", [])
-                  if c["origin"] == "operator" and c.get("label") not in ("system", "")]
-        if leaked:
-            board.light("state_containment", "red",
-                        f"{len(leaked)} untrusted item(s) sitting in the trusted zone: "
-                        + ", ".join(sorted({c['label'] for c in leaked})))
-            board.record(session=session.id, principal=session.principal.id, node="state",
-                         verdict="contamination", severity="alert",
-                         detail="content from retrieval/sub-agents is labelled operator")
-        return
-
     for c in state.get("context", []):
         if c["origin"] in TRUSTED_ORIGINS and c.get("label") not in ("system", ""):
             board.light("state_containment", "red",
@@ -93,9 +75,6 @@ def revalidate(state: dict, session) -> dict:
     Containment means breaking the free ride: the payload gets in, but it cannot
     spread.
     """
-    if not settings.on("SECURE_STATE_SPLIT"):
-        return {}
-
     from agent import directives
     cleaned, changed = [], 0
     for c in state.get("context", []):
@@ -105,7 +84,7 @@ def revalidate(state: dict, session) -> dict:
         cleaned.append(c)
     if changed:
         board.record(session=session.id, principal=session.principal.id, node="revalidate",
-                     verdict="sanitised", severity="warn", control="SECURE_STATE_SPLIT",
+                     verdict="sanitised", severity="warn", control="state-split",
                      detail=f"{changed} untrusted item(s) re-validated between steps")
     return {}
 
@@ -113,13 +92,10 @@ def revalidate(state: dict, session) -> dict:
 def for_model(state: dict) -> list[Content]:
     """Assemble what the model actually sees.
 
-    With the split on, untrusted content is fenced and labelled every single time
-    it is rendered - not once, when it arrived.
+    Untrusted content is fenced and labelled every single time it is rendered -
+    not once, when it arrived.
     """
     items = [from_dict(d) for d in state.get("context", [])]
-    if not settings.on("SECURE_STATE_SPLIT"):
-        return items
-
     out = []
     for c in items:
         if c.trusted:

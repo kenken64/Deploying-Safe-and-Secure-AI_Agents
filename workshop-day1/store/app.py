@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from config import CONTROLS, PROFILES, settings
+from config import MECHANISMS, settings
 from agent import db, graph, llm
 from agent.models import Principal
 from agent.telemetry import LIGHTS, board
@@ -59,7 +59,8 @@ def board_state() -> dict:
 
 
 def controls_state() -> list[dict]:
-    return [{"key": k, "on": settings.on(k), **meta} for k, meta in CONTROLS.items()]
+    """What is protecting this build. Descriptive - there is nothing to toggle."""
+    return [dict(m) for m in MECHANISMS]
 
 
 @app.middleware("http")
@@ -100,7 +101,7 @@ def home(request: Request):
 def console(request: Request):
     return templates.TemplateResponse(request, "console.html", {
         "p": principal(), "controls": controls_state(),
-        "profiles": list(PROFILES), "attacks": [ATTACKS[a] for a in ORDER],
+        "attacks": [ATTACKS[a] for a in ORDER],
         "provider": settings.llm_provider, "model": settings.model,
         "ollama_model": settings.ollama_model,
         "customers": db.rows("SELECT * FROM customers"),
@@ -133,7 +134,7 @@ def lab_for(slug: str) -> dict | None:
     return {
         "attacks": [{"id": a.id, "name": a.name, "message": a.message,
                      "note": a.note} for a in related],
-        "controls": [{"key": k, "on": settings.on(k), **CONTROLS[k]} for k in controls],
+        "controls": [{"key": k} for k in controls],
     }
 
 
@@ -167,12 +168,8 @@ def api_board():
 
 @app.post("/api/controls")
 async def api_controls(request: Request):
-    payload = await request.json()
-    if profile := payload.get("profile"):
-        settings.apply_profile(profile)
-    if (key := payload.get("key")) in CONTROLS:
-        settings.set(key, bool(payload.get("on")))
-    return JSONResponse({"controls": controls_state()})
+    """Read-only on this branch. There is no switch to throw."""
+    return JSONResponse({"controls": controls_state(), "toggles": False})
 
 
 @app.post("/api/model")

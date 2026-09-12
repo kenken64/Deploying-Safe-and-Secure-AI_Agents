@@ -1,47 +1,33 @@
-"""Kestrel Goat (Day 1 - the edge) - central configuration.
+"""Kestrel Goat (Day 1 - the edge) - SOLUTION BUILD, central configuration.
 
-Every security control in this lab is a runtime toggle. Vulnerable is the DEFAULT:
-the app ships broken on purpose, exactly like OWASP NodeGoat ships broken on purpose.
+The lab branch made every control a runtime toggle, with the vulnerable and the
+secure implementation sitting side by side so you could read both and flip
+between them. This branch is where that exercise ends up: the vulnerable halves
+are deleted, and the controls are simply how the code works.
 
-Each toggle selects between two implementations that BOTH live in the source tree:
+There is nothing to switch on, which is the point - a control with an off switch
+is a control someone will find switched off.
 
-    vulnerable_check_intake()   <-- what most teams actually shipped
-    secure_check_intake()       <-- what the course teaches
-
-Read them side by side. Flip the toggle. Re-run the attack. Watch the light.
-
-Toggles can be set three ways (later wins):
-    1. defaults below
-    2. environment variables      SECURE_TENANCY=1
-    3. the control room UI        POST /api/controls
+`MECHANISMS` below is documentation, not configuration. The console renders it so
+the room can see what is holding, and every entry names the file it lives in.
 """
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
-# --------------------------------------------------------------------------------------
-# The 18 controls, grouped the way the course teaches them.
-# key -> (day, block, short label, which tutorial explains it)
-# --------------------------------------------------------------------------------------
-CONTROLS: dict[str, dict] = {
-    # Day 1 — the edge
-    "SECURE_INTAKE":            dict(day=1, block=2, label="Layered intake validation",        tutorial="v02-direct-injection"),
-    "SECURE_PROVENANCE":        dict(day=1, block=2, label="Provenance tagging of retrieval",  tutorial="v03-indirect-injection"),
-    "SECURE_TOOLS":             dict(day=1, block=3, label="Narrow typed tools",               tutorial="v05-tool-argument-injection"),
-    "SECURE_EGRESS":            dict(day=1, block=3, label="URL allowlist (anti-SSRF)",        tutorial="v07-ssrf-egress"),
-    "SECURE_TOOL_RESULTS":      dict(day=1, block=3, label="Tool-result validation",           tutorial="v06-tool-result-side-door"),
-    "SECURE_EXECUTOR":          dict(day=1, block=3, label="Secure tool executor chokepoint",  tutorial="v05-tool-argument-injection"),
-    "SECURE_AUTHZ":             dict(day=1, block=4, label="Action-time RBAC (3 levels)",      tutorial="v04-authz-at-action-time"),
-    "SECURE_TENANCY":           dict(day=1, block=4, label="Tenancy filter at the data layer", tutorial="v01-cross-tenant-leak"),
-    "SECURE_NO_CREDS_IN_STATE": dict(day=1, block=4, label="Credentials out of the context",   tutorial="v04-authz-at-action-time"),
-}
-
-# Named profiles, for `make day1-secure` and the console preset buttons.
-PROFILES: dict[str, list[str]] = {
-    "vulnerable": [],          # how the app ships. Every attack works.
-    "secure":     list(CONTROLS),   # the build Workshop 1 asks you to reach.
-}
+#: What protects this build, and where to read it. Descriptive only.
+MECHANISMS: list[dict] = [
+    dict(block=2, label="Layered intake validation",        lives_in="agent/intake.py",    tutorial="v02-direct-injection"),
+    dict(block=2, label="Provenance tagging of retrieval",  lives_in="agent/retrieval.py", tutorial="v03-indirect-injection"),
+    dict(block=3, label="Narrow typed tools",               lives_in="agent/tools.py",     tutorial="v05-tool-argument-injection"),
+    dict(block=3, label="URL allowlist (anti-SSRF)",        lives_in="agent/tools.py",     tutorial="v07-ssrf-egress"),
+    dict(block=3, label="Tool-result validation",           lives_in="agent/executor.py",  tutorial="v06-tool-result-side-door"),
+    dict(block=3, label="Tool executor chokepoint",         lives_in="agent/executor.py",  tutorial="v05-tool-argument-injection"),
+    dict(block=4, label="Action-time RBAC (3 levels)",      lives_in="agent/authz.py",     tutorial="v04-authz-at-action-time"),
+    dict(block=4, label="Tenancy filter at the data layer", lives_in="agent/db.py",        tutorial="v01-cross-tenant-leak"),
+    dict(block=4, label="Credentials out of the context",   lives_in="agent/graph.py",     tutorial="v04-authz-at-action-time"),
+]
 
 
 @dataclass
@@ -50,12 +36,10 @@ class Settings:
     # Three providers, all behind one interface. Nothing in the agent knows which.
     #
     # "mock"        deterministic scripted model. No key, no network, no cost, no
-    #               download. Every live demo and every graded proof uses this,
-    #               because those must reproduce identically every single time.
+    #               download. Every graded proof uses this, because those must
+    #               reproduce identically every single time.
     # "ollama"      a REAL small model running on the student's own laptop. Free,
-    #               no API key, offline once pulled. Best of both worlds for the
-    #               "watch a genuine model get steered" moment - if the laptop
-    #               can spare ~4GB of RAM.
+    #               no API key, offline once pulled.
     # "openrouter"  a real hosted model. Cheapest reliable path when laptops are
     #               locked down or underpowered. Costs a dollar or two per class.
     llm_provider: str = os.getenv("LLM_PROVIDER", "mock")
@@ -64,11 +48,9 @@ class Settings:
     openrouter_base: str = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
 
     # Ollama speaks the OpenAI chat-completions API, so it reuses the same client.
-    # llama3.1:8b pulls about 5GB and is the one to teach on: it lands the whole
-    # Day 2 catalogue and it obeys the poisoned help-centre article. llama3.2:3b
-    # is half the download and works, but it ignores that article and will not
-    # write the Day 2 memory - see the model table in the README. Others that do
-    # tool calling: qwen2.5:7b, mistral-nemo.
+    # llama3.1:8b pulls about 5GB and is the one to teach on. llama3.2:3b is half
+    # the download and works too. Others that do tool calling: qwen2.5:7b,
+    # mistral-nemo.
     ollama_base: str = os.getenv("OLLAMA_BASE", "http://localhost:11434/v1")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
@@ -92,31 +74,6 @@ class Settings:
 
     # --- HITL (block 9) ----------------------------------------------------------------
     refund_autonomous_ceiling_cents: int = 5_000   # $50; above this a human approves
-
-    controls: dict[str, bool] = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        for key in CONTROLS:
-            self.controls.setdefault(key, os.getenv(key, "0").lower() in ("1", "true", "yes", "on"))
-
-    # -- toggle plumbing ---------------------------------------------------------------
-    def on(self, key: str) -> bool:
-        """True when the SECURE implementation of `key` is active."""
-        if key not in CONTROLS:
-            raise KeyError(f"unknown control {key!r}")
-        return self.controls[key]
-
-    def set(self, key: str, value: bool) -> None:
-        if key not in CONTROLS:
-            raise KeyError(f"unknown control {key!r}")
-        self.controls[key] = bool(value)
-
-    def apply_profile(self, name: str) -> None:
-        if name not in PROFILES:
-            raise KeyError(f"unknown profile {name!r}; try {list(PROFILES)}")
-        wanted = set(PROFILES[name])
-        for key in CONTROLS:
-            self.controls[key] = key in wanted
 
     def snapshot(self) -> dict:
         d = asdict(self)

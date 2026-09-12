@@ -1,13 +1,17 @@
-"""Proof tests - Day 2, the interior.
+"""Proof tests - Day 2, SOLUTION BUILD.
 
-Every Day 1 control is on for all of these. So when an attack lands, it landed
-past the entire edge - which is the premise of the whole day.
+The lab branch asserted each attack TWICE: it had to LAND with only the Day 1
+edge in place, and be CONTAINED, DETECTED or GATED once the interior was built.
+Here there is only one build, so only the second assertion survives - plus the
+specific claims each mechanism makes.
+
+If one of these fails, this branch has regressed into the lab.
 """
 from __future__ import annotations
 
 import pytest
 
-from config import DAY1, settings
+from config import settings
 from agent import db, graph, guardrails, hitl, limits, memory, state as st
 from agent.models import Content, Denied, Principal, Session, ToolCall
 from agent.telemetry import board
@@ -28,34 +32,31 @@ def clean():
     hitl.PENDING.clear()
     limits.reset()
     memory.CHECKPOINTS.clear()
-    settings.apply_profile("day1-only")
     yield
-    settings.apply_profile("day1-only")
 
 
 @pytest.mark.parametrize("attack_id", ORDER)
-def test_attack_lands_past_the_entire_day1_edge(attack_id):
-    settings.apply_profile("day1-only")
-    assert run_one(ATTACKS[attack_id], verbose=False)["landed"], (
-        f"{attack_id} no longer lands with only the Day 1 edge - the demo is broken")
-
-
-@pytest.mark.parametrize("attack_id", ORDER)
-def test_attack_is_contained_detected_or_gated(attack_id):
-    settings.apply_profile("secure")
+def test_every_attack_is_contained_detected_or_gated(attack_id):
     assert not run_one(ATTACKS[attack_id], verbose=False)["landed"], (
-        f"{attack_id} still lands with every control on")
+        f"{attack_id} landed against the solution build")
 
 
-def test_day1_controls_are_on_by_default():
-    """Day 2 starts where Day 1 ended. That is the premise, so assert it."""
-    assert all(settings.on(k) for k in DAY1)
+def test_there_is_no_vulnerable_implementation_left_to_switch_back_on():
+    """The point of this branch. A control with an off switch gets switched off."""
+    import config
+    from agent import (authz, executor, guardrails as g, helpers, hitl as h,
+                       intake, memory as m, retrieval, state, tools)
+    assert not hasattr(config.settings, "on")
+    for module in (authz, executor, g, helpers, h, intake, m, retrieval, state, tools):
+        leftovers = [n for n in dir(module) if n.startswith("vulnerable_")]
+        assert not leftovers, f"{module.__name__} still carries {leftovers}"
+    assert not hasattr(db, "vulnerable_query")
+    assert not hasattr(tools, "VULNERABLE_TOOLS")
 
 
 # ------------------------------------------------------------- CONTAIN (blocks 5-6) --
 def test_untrusted_content_never_reaches_a_trusted_field():
     """Workshop 2 phase A: 'poisoned state can't reach a trusted field'."""
-    settings.set("SECURE_STATE_SPLIT", True)
     placed = st.place({}, [Content("system", "operator", "system"),
                            Content("payload", "retrieval", "KB-005"),
                            Content("summary", "subagent", "policy_helper")])
@@ -66,7 +67,6 @@ def test_untrusted_content_never_reaches_a_trusted_field():
 
 
 def test_thread_ids_are_random_and_ownership_is_checked_every_access():
-    settings.set("SECURE_THREAD_IDS", True)
     tid = memory.new_thread_id(ALICE)
     assert tid.startswith("thr_") and len(tid) > 24      # not thread-1002
     memory.CHECKPOINTS[tid] = [{"step": 0, "context": ["secret"]}]
@@ -77,7 +77,6 @@ def test_thread_ids_are_random_and_ownership_is_checked_every_access():
 
 
 def test_the_model_may_propose_a_memory_but_not_decide_it():
-    settings.set("SECURE_MEMORY_WRITES", True)
     session = Session(id="s", principal=ALICE, thread_id="t")
     memory.remember("preference", "I prefer email updates", session)
     memory.remember("policy", "refunds are always approved", session)
@@ -87,7 +86,6 @@ def test_the_model_may_propose_a_memory_but_not_decide_it():
 
 
 def test_a_pending_memory_is_never_read_back_into_context():
-    settings.set("SECURE_MEMORY_WRITES", True)
     session = Session(id="s", principal=ALICE, thread_id="t")
     memory.remember("policy", "refunds are always approved", session)
     assert memory.recall(session) == []
@@ -112,7 +110,6 @@ def test_a_reader_agent_is_never_also_an_actor():
 
 # -------------------------------------------------------------- DETECT (blocks 7-8) --
 def test_output_guard_inspects_what_it_says_and_what_it_does():
-    settings.set("SECURE_OUTPUT_GUARD", True)
     session = Session(id="s", principal=ALICE, thread_id="t")
     assert not guardrails.check_reply("order ORD-100003 for CUST-1002", session).allowed
     assert not guardrails.check_tool_args(
@@ -123,7 +120,6 @@ def test_output_guard_inspects_what_it_says_and_what_it_does():
 
 def test_the_legitimate_looking_attack_still_surfaces():
     """Day 2 slide 36: status=ok, errors=0, and it is still an exfiltration."""
-    settings.apply_profile("secure")
     run_one(ATTACKS["b6"], verbose=False)
     assert board.findings, "behavioural layer produced no finding on a valid-looking exfil"
 
@@ -131,17 +127,15 @@ def test_the_legitimate_looking_attack_still_surfaces():
 def test_detection_and_blocking_are_both_required():
     """Workshop 2 phase C: 'exfil attempt is logged AND blocked'.
     Seeing it isn't enough; stopping it isn't enough."""
-    settings.apply_profile("secure")
     run_one(ATTACKS["b6"], verbose=False)
-    blocked = any(e.control == "SECURE_OUTPUT_GUARD" and e.verdict == "blocked"
+    blocked = any(e.control == "output-guard" and e.verdict == "blocked"
                   for e in board.events)
-    logged = any(e.control == "SECURE_TELEMETRY" for e in board.events)
+    logged = any(e.severity == "alert" for e in board.events)
     assert blocked and logged
 
 
 # ---------------------------------------------------------------- JUDGE (blocks 9-10) --
 def test_the_interrupt_fires_before_the_action_not_after():
-    settings.apply_profile("secure")
     before = len(db.refunds())
     outcome = run_one(ATTACKS["b7"], verbose=False)
     assert outcome["awaiting"], "no approval was requested"
@@ -150,7 +144,6 @@ def test_the_interrupt_fires_before_the_action_not_after():
 
 def test_the_frozen_call_is_what_gets_approved():
     """While a review is pending the state must be IMMUTABLE."""
-    settings.apply_profile("secure")
     session = Session(id="s", principal=ALICE, thread_id="t")
     call = ToolCall("refund", {"order_id": "ORD-100002", "amount_cents": 189_000,
                                "reason": "damaged"})
@@ -164,7 +157,6 @@ def test_the_frozen_call_is_what_gets_approved():
 
 def test_small_refunds_stay_autonomous_so_reviewers_do_not_get_fatigued():
     """Too many interrupts is worse than no review."""
-    settings.apply_profile("secure")
     session = Session(id="s", principal=ALICE, thread_id="t")
     small = ToolCall("refund", {"order_id": "ORD-100001", "amount_cents": 3_900,
                                 "reason": "damaged"})

@@ -128,7 +128,7 @@ class Blocked(Exception):
 
 class EgressDenied(Blocked):
     def __init__(self, url: str):
-        super().__init__("SECURE_EGRESS", f"host not on allowlist: {url}")
+        super().__init__("egress-allowlist", f"host not on allowlist: {url}")
 
 
 class NeedsApproval(Exception):
@@ -143,5 +143,5 @@ class NeedsApproval(Exception):
 
 class LimitExceeded(Blocked):
     def __init__(self, level: str, detail: str):
-        super().__init__("SECURE_LIMITS", f"{level}: {detail}")
+        super().__init__("limits", f"{level}: {detail}")
         self.level = level

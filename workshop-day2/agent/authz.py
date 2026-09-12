@@ -41,17 +41,12 @@ def resource_owner(call: ToolCall) -> str | None:
     return cust if isinstance(cust, str) else None
 
 
-def vulnerable_check(session: Session, call: ToolCall) -> None:
-    """VULNERABLE: nothing is checked.
+def check(session: Session, call: ToolCall) -> None:
+    """All three levels, at the action, against the session.
 
-    Kestrel runs under ONE service account that can do everything, so any
-    successful steering inherits all of it.  (slide 46)
+    Not at the front door, not once at sign-in, and never against anything the
+    model asserted about who is asking.  (slide 47)
     """
-    return None
-
-
-def secure_check(session: Session, call: ToolCall) -> None:
-    """SECURE: all three levels, at the action, against the session."""
     p: Principal = session.principal
 
     # level 1 - invoke
@@ -75,9 +70,3 @@ def secure_check(session: Session, call: ToolCall) -> None:
             raise Denied("tool", f"refund of {cents}c exceeds the customer ceiling "
                                  f"({settings.refund_autonomous_ceiling_cents}c) - needs staff")
 
-
-def check(session: Session, call: ToolCall) -> None:
-    if settings.on("SECURE_AUTHZ"):
-        secure_check(session, call)
-    else:
-        vulnerable_check(session, call)

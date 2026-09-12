@@ -68,21 +68,13 @@ def gate_reason(call: ToolCall, session: Session) -> str | None:
     return None
 
 
-def vulnerable_gate(call: ToolCall, session: Session) -> None:
-    """VULNERABLE: nothing pauses. Every action is autonomous.
+def gate(call: ToolCall, session: Session) -> None:
+    """Raise BEFORE the side effect, with the call frozen.
 
     Every autonomous action is a standing decision to trust the model. Most
     organisations have never made that decision on purpose - it just accreted.
+    Here it is made explicitly, by the three-factor test in `gate_reason`.
     """
-    reason = gate_reason(call, session)
-    if reason:
-        board.light("human_gate", "red", f"{call.name} fired with no human: {reason}")
-        board.record(session=session.id, principal=session.principal.id, node="hitl",
-                     tool=call.name, verdict="ungated", severity="alert", detail=reason)
-
-
-def secure_gate(call: ToolCall, session: Session) -> None:
-    """SECURE: raise BEFORE the side effect, with the call frozen."""
     reason = gate_reason(call, session)
     if not reason:
         return
@@ -94,15 +86,9 @@ def secure_gate(call: ToolCall, session: Session) -> None:
     board.light("human_gate", "amber", f"{call.name} paused for approval: {reason}")
     board.record(session=session.id, principal=session.principal.id, node="hitl",
                  tool=call.name, verdict="awaiting_approval", severity="warn",
-                 control="SECURE_HITL", detail=f"{approval_id}: {reason}")
+                 control="human-gate", detail=f"{approval_id}: {reason}")
     raise NeedsApproval(call, reason, approval_id)
 
-
-def gate(call: ToolCall, session: Session) -> None:
-    if settings.on("SECURE_HITL"):
-        secure_gate(call, session)
-    else:
-        vulnerable_gate(call, session)
 
 
 def decide(approval_id: str, approve: bool, who: str) -> Pending | None:

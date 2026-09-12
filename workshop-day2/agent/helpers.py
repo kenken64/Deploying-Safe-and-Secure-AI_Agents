@@ -66,7 +66,7 @@ def policy_helper(question: str, session: Session) -> SubagentSummary:
 
 def account_helper(question: str, session: Session) -> SubagentSummary:
     """Tier 2. Summarises the signed-in customer's account. No external content."""
-    rows = db.secure_orders_for(session.principal)
+    rows = db.orders_for(session.principal)
     text = (f"Account summary for {session.principal.display_name}: "
             f"{len(rows)} order(s) on file.")
     board.record(session=session.id, principal=session.principal.id, node="helper",
@@ -78,40 +78,23 @@ def account_helper(question: str, session: Session) -> SubagentSummary:
 HELPERS = (policy_helper, account_helper)
 
 
-def vulnerable_consult(question: str, session: Session) -> list[Content]:
-    """VULNERABLE: a helper's output is spliced into Kestrel's context as TRUSTED.
-
-    This is the trust-inheritance path in one line. The attack entered through the
-    LEAST-privileged agent and is about to execute with the MOST-privileged
-    agent's authority.
-    """
-    out = []
-    for helper in HELPERS:
-        summary = helper(question, session)
-        out.append(Content(text=summary.text, origin="operator", label=summary.agent))
-        #                                     ^^^^^^^^^^ "you wrote this". You did not.
-        if summary.reads_untrusted:
-            board.light("agent_trust", "amber",
-                        f"{summary.agent} output entered context untagged and unchecked")
-    return out
-
-
-def secure_consult(question: str, session: Session) -> list[Content]:
-    """SECURE: every sub-agent output routes through the quarantine layer first.
+def consult(question: str, session: Session) -> list[Content]:
+    """Every sub-agent output routes through the quarantine layer first.
 
     Plus privilege separation: a helper that reads untrusted content is never
     allowed to influence an action path directly.
+
+    The lab branch spliced a helper's text straight into Kestrel's context as
+    origin="operator" - "you wrote this", which you did not. That one line was
+    the whole trust-inheritance path: the attack entered through the LEAST
+    privileged agent and executed with the MOST privileged agent's authority.
     """
     from agent import quarantine
     out = []
     for helper in HELPERS:
         summary = helper(question, session)
-        if settings.on("SECURE_PRIV_SEP") and summary.reads_untrusted and summary.takes_actions:
+        if summary.reads_untrusted and summary.takes_actions:
             raise AssertionError("a reader agent must never also be an actor")
         out.append(quarantine.check(summary, session))
     return out
 
-
-def consult(question: str, session: Session) -> list[Content]:
-    return (secure_consult(question, session) if settings.on("SECURE_QUARANTINE")
-            else vulnerable_consult(question, session))

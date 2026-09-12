@@ -108,9 +108,6 @@ class Board:
 
     # -- LAYER 3 ---------------------------------------------------------------------
     def _behavioural(self, ev: Event) -> None:
-        from config import settings
-        if not settings.on("SECURE_TELEMETRY"):
-            return
         if ev.tool:
             self.tool_counts[ev.tool] += 1
         if ev.egress_host:

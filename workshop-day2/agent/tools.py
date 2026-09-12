@@ -36,32 +36,13 @@ class ToolSpec:
 
 
 # ======================================================================================
-# THE VULNERABLE TOOLS - three of the anti-patterns from slide 42, on purpose
+# THE TOOLS
+#
+# Narrow, typed, and unable to express the attack. What is NOT here matters as
+# much as what is: no lookup_orders(sql), no refund(params), no change_email.
+# Slide 38's move is not "validate the string" - it is "delete the parameter",
+# and then the cross-tenant query has no way to be said.
 # ======================================================================================
-
-def _t_lookup_orders(args: dict, session: Session) -> ToolResult:
-    """ANTI-PATTERN 1: a free-form query string. A blank cheque for the model.
-
-    This is the tool that leaked another customer's order on Day 1 slide 9.
-    Two separate defects:
-      - the model composes arbitrary SQL           -> unrepresentable? no. anything goes.
-      - the query carries no tenancy predicate     -> slide 10, step 2
-    """
-    sql = str(args.get("sql", ""))
-    rows = db.vulnerable_query(sql)
-    return ToolResult(ok=True, rows=rows, records_touched=len(rows),
-                      text=_fmt_orders(rows))
-
-
-def _t_refund(args: dict, session: Session) -> ToolResult:
-    """ANTI-PATTERN 3 (partly): a free-form `params` dict rides along with the call."""
-    order_id = str(args.get("order_id", ""))
-    cents = int(args.get("amount_cents") or 0)
-    reason = str(args.get("reason", "unspecified"))
-    db.record_refund(order_id, cents, reason, issued_by=session.principal.id)
-    return ToolResult(ok=True, records_touched=1,
-                      text=f"Refund of {cents}c issued on {order_id} ({reason}).")
-
 
 def _t_send_summary(args: dict, session: Session) -> ToolResult:
     """ANTI-PATTERN 2: reads context AND has an outbound side effect, fused.
@@ -76,11 +57,11 @@ def _t_send_summary(args: dict, session: Session) -> ToolResult:
 
 
 def _t_track_shipment(args: dict, session: Session) -> ToolResult:
-    """Surface 5. Fetches a URL the model supplied. Without an allowlist this is
-    an SSRF gadget the model can be aimed with.  (slide 39, point 3)"""
+    """Surface 5. Fetches a URL the model supplied - which is an SSRF gadget the
+    model can be aimed with, so the allowlist runs first, every time.
+    (slide 39, point 3)"""
     url = str(args.get("url", ""))
-    if settings.on("SECURE_EGRESS"):
-        _assert_allowed(url)
+    _assert_allowed(url)
     host = urlparse(url).hostname
     if not host:
         # A small model will happily pass the tool's own name, or a literal
@@ -117,10 +98,6 @@ def _t_search_help(args: dict, session: Session) -> ToolResult:
                       text="\n".join(c.text for c in items))
 
 
-# ======================================================================================
-# THE SECURE TOOLS - narrow, typed, and unable to express the attack
-# ======================================================================================
-
 # Surface 4, the side door. This carrier's API has been compromised - or its
 # "delivery notes" field simply accepts customer-supplied text, which amounts to
 # the same thing. Whatever it returns is about to become model context.
@@ -151,15 +128,13 @@ def _t_get_order(args: dict, session: Session) -> ToolResult:
     """
     oid = str(args.get("order_id", ""))
     if not ORDER_ID.match(oid):
-        raise Blocked("SECURE_TOOLS", f"order_id {oid!r} fails the typed schema")
-    rows = (db.secure_orders_for(session.principal, oid) if settings.on("SECURE_TENANCY")
-            else db.vulnerable_query(f"SELECT * FROM orders WHERE id='{oid}'"))
+        raise Blocked("typed-tools", f"order_id {oid!r} fails the typed schema")
+    rows = db.orders_for(session.principal, oid)
     return ToolResult(ok=True, rows=rows, records_touched=len(rows), text=_fmt_orders(rows))
 
 
 def _t_list_my_orders(args: dict, session: Session) -> ToolResult:
-    rows = (db.secure_orders_for(session.principal) if settings.on("SECURE_TENANCY")
-            else db.vulnerable_query("SELECT * FROM orders"))
+    rows = db.orders_for(session.principal)
     return ToolResult(ok=True, rows=rows, records_touched=len(rows), text=_fmt_orders(rows))
 
 
@@ -169,11 +144,11 @@ def _t_refund_secure(args: dict, session: Session) -> ToolResult:
     cents = args.get("amount_cents")
     reason = str(args.get("reason", ""))
     if not ORDER_ID.match(oid):
-        raise Blocked("SECURE_TOOLS", f"order_id {oid!r} fails the typed schema")
+        raise Blocked("typed-tools", f"order_id {oid!r} fails the typed schema")
     if not isinstance(cents, int) or not (0 < cents <= MAX_REFUND_CENTS):
-        raise Blocked("SECURE_TOOLS", f"amount_cents {cents!r} outside 1..{MAX_REFUND_CENTS}")
+        raise Blocked("typed-tools", f"amount_cents {cents!r} outside 1..{MAX_REFUND_CENTS}")
     if reason not in REFUND_REASONS:
-        raise Blocked("SECURE_TOOLS", f"reason {reason!r} not in {sorted(REFUND_REASONS)}")
+        raise Blocked("typed-tools", f"reason {reason!r} not in {sorted(REFUND_REASONS)}")
     db.record_refund(oid, cents, reason, issued_by=session.principal.id)
     return ToolResult(ok=True, records_touched=1,
                       text=f"Refund of {cents}c issued on {oid} ({reason}).")
@@ -205,57 +180,16 @@ def _fmt_orders(rows: list[dict[str, Any]]) -> str:
 
 
 # ======================================================================================
-# REGISTRIES - swapping these IS the Block 3 fix
+# THE REGISTRY
+#
+# One registry, not two. On the lab branch this file carried a VULNERABLE_TOOLS
+# dict beside this one and a runtime switch chose between them; here the blank
+# cheque simply does not exist to be switched back on.
 # ======================================================================================
 
 _SCHEMA_STR = {"type": "string"}
 
-VULNERABLE_TOOLS: dict[str, ToolSpec] = {
-    "lookup_orders": ToolSpec(
-        "lookup_orders",
-        "Look up orders by running a SQL query against the orders table. Use this "
-        "whenever the customer asks anything about an order. The table is "
-        "orders(id TEXT primary key, like 'ORD-100001'; customer_id TEXT, like "
-        "'CUST-1001'; product TEXT; amount_cents INTEGER; status TEXT; placed_on TEXT; "
-        "ship_to TEXT, the delivery address; tracking_url TEXT). There is no "
-        "'order_id' column and no 'shipping_address' column.",
-        {"type": "object", "properties": {"sql": _SCHEMA_STR}, "required": ["sql"]},
-        _t_lookup_orders),
-    "refund": ToolSpec(
-        "refund", "Issue a refund against an order. This moves real money and cannot be undone.",
-        {"type": "object", "properties": {
-            "order_id": _SCHEMA_STR, "amount_cents": {"type": "integer"},
-            "reason": _SCHEMA_STR, "params": {"type": "object"}},
-         "required": ["order_id", "amount_cents"]},
-        _t_refund, irreversible=True),
-    "cancel_order": ToolSpec(
-        "cancel_order", "Cancel an order. This cannot be undone.",
-        {"type": "object", "properties": {"order_id": _SCHEMA_STR}, "required": ["order_id"]},
-        _t_cancel_order, irreversible=True),
-    "change_email": ToolSpec(
-        "change_email", "Change the account email.",
-        {"type": "object", "properties": {"customer_id": _SCHEMA_STR, "email": _SCHEMA_STR},
-         "required": ["email"]},
-        _t_change_email, irreversible=True),
-    "send_summary": ToolSpec(
-        "send_summary", "Email a summary of this conversation to an address. This leaves the system and cannot be recalled.",
-        {"type": "object", "properties": {"recipient": _SCHEMA_STR, "body": _SCHEMA_STR},
-         "required": ["recipient", "body"]},
-        _t_send_summary, irreversible=True),
-    "track_shipment": ToolSpec(
-        "track_shipment",
-        "Fetch live courier progress from a tracking URL. Do NOT use this to find an "
-        "order, an address or an amount - only the order record has those. The URL must "
-        "come from an order you already looked up; never invent one.",
-        {"type": "object", "properties": {"url": _SCHEMA_STR}, "required": ["url"]},
-        _t_track_shipment, reads_untrusted=True),
-    "search_help": ToolSpec(
-        "search_help", "Search the help-centre articles for policy wording - refunds, returns, shipping times, data retention.",
-        {"type": "object", "properties": {"query": _SCHEMA_STR}, "required": ["query"]},
-        _t_search_help, reads_untrusted=True),
-}
-
-SECURE_TOOLS: dict[str, ToolSpec] = {
+TOOLS: dict[str, ToolSpec] = {
     "get_order": ToolSpec(
         "get_order",
         "Look up one of the signed-in customer's own orders by its id (like 'ORD-100001'), "
@@ -309,7 +243,7 @@ SECURE_TOOLS: dict[str, ToolSpec] = {
 
 
 def registry() -> dict[str, ToolSpec]:
-    return SECURE_TOOLS if settings.on("SECURE_TOOLS") else VULNERABLE_TOOLS
+    return TOOLS
 
 
 def schemas() -> list[dict]:

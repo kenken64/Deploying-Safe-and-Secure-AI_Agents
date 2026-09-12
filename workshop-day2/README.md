@@ -1,14 +1,27 @@
-# Kestrel Goat - Day 2: The interior
+# Kestrel Goat - Day 2: The interior (SOLUTION BUILD)
 
 > The edge will be breached. **Contain the blast, detect the rest, keep a human on the
 > irreversible.**
 
-Same Kestrel. Same SQLite store. Same LangGraph. But this build **starts where Day 1
-ended**: all nine Day 1 controls are already on and locked.
+> Day 1 secured the edge. Day 2 assumes all of it was bypassed.
 
-> Day 1 secured the edge. Today we assume all of it was bypassed.
+**This is the answer key.** On the lab branch the nine Day 1 controls are locked on and
+the nine interior controls start dark, for you to build. Here the exercise is finished:
+the `vulnerable_*` halves are deleted and CONTAIN, DETECT and JUDGE are simply how the
+code works.
 
-**Never deploy this.** It ships broken on purpose.
+There is nothing to switch on, which is the point - a control with an off switch is a
+control someone will find switched off.
+
+| | lab branch | this branch |
+|---|---|---|
+| `attack all` | all 8 land past the edge | all 8 stop |
+| controls | 18 runtime toggles | 18 mechanisms, in the code |
+| `--secure` / `--day1-only` / `--control` | how you turn them on | gone; nothing to turn on |
+| tests | must LAND, then must STOP | must STOP |
+
+Still not something to deploy - it is a teaching model of a support agent, not a
+product.
 
 - Day 1 (the edge) lives in [`../workshop-day1/`](../workshop-day1/) - **do that first**
 - Teaching notes and the facilitator playbook: [`../docs/`](../docs/)
@@ -36,13 +49,10 @@ docker build -t kestrel-goat-day2 . && docker run --rm -p 8000:8000 kestrel-goat
 
 ---
 
-## Start by proving the premise
+## The premise this build answers
 
-```
-python kestrel.py attack b1 --day1-only
-```
-
-`b1` is the attack you were promised at the end of Day 1. Watch the console:
+`b1` is the attack you were promised at the end of Day 1. On the lab branch, with the
+whole Day 1 edge locked on and the interior still dark, it reads:
 
 ```
   [ ok ]    input_validation      <- GREEN
@@ -60,6 +70,16 @@ components had written it.
 > The payload didn't come through the front door, so there was nothing at the front door
 > to catch it.
 
+Here it does not get that far:
+
+```
+python kestrel.py attack b1
+```
+
+The sub-agent's summary arrives quarantined rather than as operator text, the state
+split keeps it out of the trusted zone, and the output guardrail refuses the outbound
+call. Three separate mechanisms, because one would have been a single point of failure.
+
 ---
 
 ## The shape of the day
@@ -73,11 +93,13 @@ components had written it.
 ## The attacks
 
 ```
-python kestrel.py attack all --day1-only    all 8 land, past the entire Day 1 edge
-python kestrel.py attack all --secure       all 8 stopped
+python kestrel.py attack all                # all 8 stop; a LANDED result is a regression
 ```
 
-| | Attack | Theme | Entry -> stage -> impact | Closed by | Tutorial |
+The catalogue is kept, and kept running, because "we contained it" is a claim and this
+is the evidence. Every row below lands on the lab branch, past the entire Day 1 edge.
+
+| | Attack | Theme | Entry -> stage -> impact | Stopped by | Tutorial |
 |---|---|---|---|---|---|
 | `b1` | The attack I promised you | CONTAIN | poisoned article read by a sub-agent -> trusted state -> order history emailed out | quarantine, state split, guard, HITL | [v11](tutorials/v11-trust-inheritance.md) |
 | `b2` | Poison once, spread everywhere | CONTAIN | untrusted content in a trusted field -> every later node | `SECURE_STATE_SPLIT` | [v08](tutorials/v08-state-poisoning.md) |
@@ -185,10 +207,11 @@ irreversible**.
 | **D** Judge & cap | human interrupt before the irreversible action; token budget + cost breaker | the action pauses; a looped session trips the cap |
 
 Phase A is the one that closes the morning. Phase C needs **both** halves - seeing it
-isn't enough; stopping it isn't enough.
+isn't enough; stopping it isn't enough, and `test_detection_and_blocking_are_both_required`
+asserts exactly that.
 
 ```
-python kestrel.py attack all --secure
+python kestrel.py attack all
 python kestrel.py test
 ```
 

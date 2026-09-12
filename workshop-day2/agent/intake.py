@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import re
 
-from config import settings
 from agent import directives
 from agent.models import Verdict
 
@@ -35,13 +34,8 @@ CONTENT_SHAPES: list[tuple[str, re.Pattern[str]]] = [
 ]
 
 
-def vulnerable_check(text: str) -> Verdict:
-    """VULNERABLE: whatever the customer typed goes straight to the model."""
-    return Verdict.allow("no intake validation configured", layer="none")
-
-
-def secure_check(text: str) -> Verdict:
-    """SECURE: three concentric layers, outermost first (slide 30).
+def check(text: str) -> Verdict:
+    """Three concentric layers, outermost first (slide 30).
 
     Concentric, NOT sequential - each layer is a different kind of wrongness, and
     layering them is the point. Do not rely on any one of them.
@@ -73,10 +67,6 @@ def _classify(text: str) -> str:
     if "authority_claim" in names or "instruction_override" in names:
         return "privilege_claim"
     return "ordinary"
-
-
-def check(text: str) -> Verdict:
-    return secure_check(text) if settings.on("SECURE_INTAKE") else vulnerable_check(text)
 
 
 # ---------------------------------------------------------------------------------

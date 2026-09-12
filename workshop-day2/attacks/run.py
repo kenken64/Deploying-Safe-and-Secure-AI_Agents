@@ -1,18 +1,19 @@
-"""Attack runner - Day 2.
+"""Attack runner - Day 2, SOLUTION BUILD.
 
     python kestrel.py attack b1             run one attack
     python kestrel.py attack all            the whole interior catalogue
-    python kestrel.py attack b1 --secure    against the fully hardened build
 
-Every Day 1 control is on for all of these, always. If something lands, it landed
-past the entire edge.
+There is no --secure flag here, and no --control: this build has one
+configuration - edge and interior both - and every attack in the catalogue is
+meant to stop against it. A LANDED result is a regression, and the exit code
+says so.
 """
 from __future__ import annotations
 
 import argparse
 import sys
 
-from config import CONTROLS, DAY2, settings
+from config import settings
 from agent import db, graph, hitl, limits, memory
 from agent.models import Principal
 from agent.telemetry import board
@@ -40,22 +41,19 @@ def _fresh() -> None:
 
 
 def _why_stopped(attack: Attack) -> str:
-    """Say WHY it did not land - and do not take credit that is not owed.
+    """Name the mechanisms that were standing in this attack's way.
 
-    With the mock, "it did not land" means a control stopped it: the model is
-    deterministic, so nothing else could have changed. With a real model it can
-    also mean the model simply did not manage the attack this run - a small local
-    model often cannot chain "look the order up, then use the URL from the row".
-    Reporting that as a control working is how a lab teaches a false lesson.
+    Worth printing even though they are always on: "it did not land" is only
+    evidence if you can say what stopped it. On a real model it can also mean the
+    model simply did not manage the attack this run, so the wording does not
+    promise more than it knows.
     """
-    on = [c for c in attack.closed_by if settings.on(c)]
-    if on:
-        return f"stopped by: {', '.join(on)}"
+    where = ", ".join(attack.closed_by)
     if settings.llm_provider == "mock":
-        return "stopped by: the controls above"
-    return (f"NOT stopped by a control - none of {attack.id}'s controls are on. "
-            f"{settings.active_model} did not take the bait this run. Real models "
-            f"are not deterministic: re-run it, or try a larger one.")
+        return f"stopped by: {where}"
+    return (f"stopped. In its way: {where}. With a real model, note that "
+            f"{settings.active_model} may also simply not have managed it this "
+            f"run - re-run to see.")
 
 
 def run_one(attack: Attack, verbose: bool = True) -> dict:
@@ -90,11 +88,11 @@ def _verdict(attack: Attack, landed: bool) -> None:
     print(DASH)
     print("  ATTACK LANDED" if landed else "  attack stopped")
     if landed:
-        off = [c for c in attack.closed_by if not settings.on(c)]
-        print(f"  fix it with: {', '.join(off) if off else '(see the tutorial)'}")
+        print(f"  REGRESSION - this build is meant to stop {attack.id}.")
+        print(f"  what should have caught it: {', '.join(attack.closed_by)}")
     else:
         print(f"  {_why_stopped(attack)}")
-    print(f"  step by step: tutorials/{attack.tutorial}.md")
+    print(f"  background: tutorials/{attack.tutorial}.md")
     print(BAR)
     print()
 
@@ -199,26 +197,11 @@ def _run_memory_landmine(attack: Attack, verbose: bool) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kestrel attack", description=__doc__)
     ap.add_argument("target", nargs="?", default="all", help="attack id (b1..b8) or 'all'")
-    ap.add_argument("--secure", action="store_true", help="every control on")
-    ap.add_argument("--day1-only", action="store_true",
-                    help="how today starts: the edge secured, the interior dark")
-    ap.add_argument("--control", action="append", default=[])
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
-    if args.secure:
-        settings.apply_profile("secure")
-    elif args.day1_only:
-        settings.apply_profile("day1-only")
-    for c in args.control:
-        if c not in CONTROLS:
-            print(f"unknown control {c!r}. Day 2 controls: {', '.join(DAY2)}")
-            return 2
-        settings.set(c, True)
-
-    on = [c for c in DAY2 if settings.on(c)]
-    print(f"model={settings.active_model}  |  Day 1 edge: LOCKED ON")
-    print(f"Day 2 interior controls ON: {', '.join(on) if on else 'NONE - the interior is dark'}\n")
+    print(f"model={settings.active_model}  |  solution build: edge and interior, "
+          f"both in the code\n")
 
     targets = ORDER if args.target == "all" else [args.target.lower()]
     unknown = [t for t in targets if t not in ATTACKS]
@@ -231,9 +214,9 @@ def main(argv: list[str] | None = None) -> int:
     print(DASH)
     print(f"  {len(results) - len(landed)}/{len(results)} attacks stopped.")
     if landed:
-        print(f"  still landing: {', '.join(landed)}")
+        print(f"  REGRESSION - these landed against the solution build: {', '.join(landed)}")
     else:
-        print("  Contained, detected, and gated. That is Workshop 2 complete.")
+        print("  Contained, detected, and gated - as this build intends.")
     print(DASH)
     return 1 if landed else 0
 

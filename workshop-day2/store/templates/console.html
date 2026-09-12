@@ -15,8 +15,6 @@
     <option value="ollama" {% if provider=='ollama' %}selected{% endif %}>model: {{ ollama_model }} - real, on this laptop</option>
     <option value="openrouter" {% if provider=='openrouter' %}selected{% endif %}>model: {{ model }} - real, via OpenRouter</option>
   </select>
-  <button onclick="profile('day1-only')">Back to how today started</button>
-  <button onclick="profile('secure')">Apply all Day 2 fixes</button>
   <button onclick="hardReset()">Reseed database</button>
 </div>
 
@@ -83,18 +81,16 @@
         {% for d in directives %}<span class="pill">{{ d }}</span>{% endfor %}</div>
     </div>
 
-    <h2 style="margin-top:22px">Controls</h2>
-    <p class="sub">Each one swaps a <code>vulnerable_*</code> function for a <code>secure_*</code> one.
-      Both are in the source. Read them side by side.</p>
+    <h2 style="margin-top:22px">What is holding</h2>
+    <p class="sub">Nothing to toggle on this branch. The <code>vulnerable_*</code> halves
+      are gone from the source, so each of these is simply how the code works - and
+      every row names the file to read it in.</p>
     <div class="controls" id="controls">
       {% for c in controls %}
-      <label class="ctl {% if c.on %}on{% endif %} {% if c.locked %}locked{% endif %}"
-             data-key="{{ c.key }}">
-        <input type="checkbox" style="width:auto" {% if c.on %}checked{% endif %}
-               onchange="toggle('{{ c.key }}', this.checked)">
-        <span class="k">{{ c.key }}</span>
+      <label class="ctl on">
         <span>{{ c.label }}</span>
-        <span class="blk">{% if c.locked %}day 1{% else %}block {{ c.block }}{% endif %}</span>
+        <code class="k">{{ c.lives_in }}</code>
+        <span class="blk">block {{ c.block }}</span>
       </label>
       {% endfor %}
     </div>
@@ -156,16 +152,6 @@ async function decide(id, approve){
   const d = await (await fetch('/api/approve',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({id,approve})})).json();
   add('sys','approval '+id+': '+d.status); paint(d.board);
-}
-async function toggle(key,on){
-  await fetch('/api/controls',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({key,on})});
-  document.querySelector(`[data-key="${key}"]`).classList.toggle('on', on);
-}
-async function profile(name){
-  await fetch('/api/controls',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({profile:name})});
-  location.reload();
 }
 async function hardReset(){ await fetch('/api/reset',{method:'POST'});
   chat.innerHTML='<div class="msg agent">Hi! How can I help today?</div>'; refresh(); }

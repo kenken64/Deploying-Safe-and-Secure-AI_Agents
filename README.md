@@ -1,9 +1,15 @@
-# Developing Secure AI Agents
+# Developing Secure AI Agents - SOLUTION BUILD
+
+> **This branch is the answer key.** The lab lives on `main`.
 
 A two-day workshop for engineers who are shipping agentic systems, built around **Kestrel
-Goat** - a deliberately vulnerable e-commerce support agent in the tradition of
-[OWASP NodeGoat](https://github.com/OWASP/NodeGoat), but targeting the vulnerabilities that
+Goat** - on `main`, a deliberately vulnerable e-commerce support agent in the tradition of
+[OWASP NodeGoat](https://github.com/OWASP/NodeGoat), targeting the vulnerabilities that
 only exist once a language model can **act**.
+
+Here both workshops are finished. All eighteen controls are in the code, the
+`vulnerable_*` halves are deleted, and the runtime toggles are gone - so every attack in
+both catalogues stops, and a LANDED result is a regression rather than a lesson.
 
 > **Assume the model is already compromised. Make sure that assumption isn't catastrophic.**
 
@@ -20,9 +26,9 @@ NUS-ISS · Institute of Systems Science, National University of Singapore
 | **[Teaching notes](docs/)** | Slide-by-slide understanding, facilitator playbook, security reference, workshop guide. |
 | **[Slides](slides/)** | The two decks the course is taught from. |
 
-Each day is a **self-contained, runnable lab** with its own README, its own attacks, its
-own step-by-step tutorials, and its own proof tests. Day 2 ships with Day 1's fixes
-already applied and locked on - which is exactly its premise.
+Each day is a **self-contained, runnable build** with its own README, its own attacks and
+its own proof tests. Day 2 carries Day 1's fixes as well as its own - which is exactly
+its premise.
 
 ```
 python kestrel.py doctor      # check this machine (macOS, Windows, Linux)
@@ -64,9 +70,10 @@ Every attack in both days is read the same way: **entry point → execution stag
 
 ---
 
-## How the lab works
+## How this branch differs from the lab
 
-**Every control is a runtime switch between two functions that both live in the source:**
+On `main`, every control is a runtime switch between two functions that both live in the
+source:
 
 ```python
 def vulnerable_check(text): ...    # what most teams actually shipped
@@ -76,18 +83,27 @@ def check(text):
     return secure_check(text) if settings.on("SECURE_INTAKE") else vulnerable_check(text)
 ```
 
-There is no "fixed branch" to diff against. You read both, flip the switch, re-run the
-attack, and watch the light.
+Here there is one function, and it is the second one. The switch, the profiles, the
+`--secure` and `--control` flags and the console's toggle panel are all gone, because a
+control with an off switch is a control someone will find switched off.
 
-**Each tutorial is the lab itself.** At `/tutorial/<name>` you never leave the page:
+```
+git diff main..ollama-solution -- workshop-day1/agent workshop-day2/agent
+```
 
-1. **Run the attack** against the build you have now - transcript and lights render inline
-2. **Read why it worked** - the walkthrough goes to the exact file and line
-3. **Apply the fix** - toggle it right there, after reading the two implementations
-4. **Prove it** - re-run the same attack and watch the light go green
+That diff is the whole answer key.
 
-**The control room** (`/console`) is the two-pane view the course demos from: customer chat
-on the left, lights and trace on the right.
+| | `main` | this branch |
+|---|---|---|
+| Day 1 `attack all` | all 7 land | **all 7 stop** |
+| Day 2 `attack all` | all 8 land past the edge | **all 8 stop** |
+| tests | 20 + 30, each attack LANDS then STOPS | 14 + 22, each attack STOPS |
+| `/console` | a switchboard | a panel naming each mechanism and its file |
+| tutorials | the lab itself, toggles and all | kept for reference; their "flip SECURE_X" steps have no switch here |
+
+**The control room** (`/console`) is still the two-pane view the course demos from:
+customer chat on the left, lights and trace on the right. On this build the lights stay
+green.
 
 ---
 
@@ -170,12 +186,14 @@ the bait this run. Real models are not deterministic: re-run it, or try a larger
 
 ## Safety
 
-Both labs are **deliberately vulnerable software**. They contain unscoped SQL, a
-blank-cheque tool, seeded prompt-injection payloads, an SSRF gadget and an unguarded
-checkpoint store, all on purpose.
+On `main` both labs are **deliberately vulnerable software**: unscoped SQL, a
+blank-cheque tool, an SSRF gadget and an unguarded checkpoint store, all on purpose.
+This branch removes those, but it is still a **teaching model** rather than a product -
+the seeded prompt-injection payloads are still in the store, the "network" calls are
+simulated, and nothing here has been through the review a real support agent needs.
 
 - Run them on `127.0.0.1` only. The Docker images bind `0.0.0.0` **because a container
   requires it** - do not publish the port beyond your own machine.
-- Never deploy either folder anywhere.
+- Never deploy either folder anywhere, on any branch.
 - No real credentials, no real customer data, no real payment or shipping endpoints. The
   seeded customers, orders and API hosts are all fictional `*.example` names.

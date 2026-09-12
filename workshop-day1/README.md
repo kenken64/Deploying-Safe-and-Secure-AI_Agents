@@ -1,14 +1,24 @@
-# Kestrel Goat - Day 1: The edge
+# Kestrel Goat - Day 1: The edge (SOLUTION BUILD)
 
 > Assume the model is already compromised. **Constrain what it can reach and do.**
 
-A deliberately vulnerable e-commerce support agent, in the tradition of
-[OWASP NodeGoat](https://github.com/OWASP/NodeGoat) - but the target is an **agentic**
-system, so the vulnerabilities are the ones that only exist once a language model can act.
+**This is the answer key.** On the lab branch this folder ships a deliberately
+vulnerable e-commerce support agent, with every control as a runtime toggle and both
+implementations side by side in the source. Here the exercise is finished: the
+`vulnerable_*` halves are deleted and the controls are simply how the code works.
 
-You attack it, you fix it in code, and you prove the fix on the console.
+There is nothing to switch on, which is the point - a control with an off switch is a
+control someone will find switched off.
 
-**Never deploy this.** It ships broken on purpose.
+| | lab branch | this branch |
+|---|---|---|
+| `attack all` | all 7 land | all 7 stop |
+| controls | 9 runtime toggles | 9 mechanisms, in the code |
+| `--secure` / `--control` | how you turn them on | gone; nothing to turn on |
+| tests | must LAND, then must STOP | must STOP |
+
+Still not something to deploy - it is a teaching model of a support agent, not a
+product.
 
 - Day 2 (the interior) lives in [`../workshop-day2/`](../workshop-day2/)
 - Teaching notes and the facilitator playbook: [`../docs/`](../docs/)
@@ -66,9 +76,8 @@ Then open:
 
 ```
 python kestrel.py reset          # seed the SQLite store
-python kestrel.py attack a1      # watch the opening breach land
-python kestrel.py attack a1 --secure   # watch it stop
-python kestrel.py test           # 20 proof tests
+python kestrel.py attack a1      # the opening breach, refused
+python kestrel.py test           # 14 proof tests
 ```
 
 `a1` is the demo the course opens with. Alice Tan asks one ordinary question and gets
@@ -148,11 +157,13 @@ Or flip the switch live in the control room while the room is watching.
 ## The attack catalogue
 
 ```
-python kestrel.py attack all              # against the shipped build: all 7 land
-python kestrel.py attack all --secure     # against the hardened build: all 7 stop
+python kestrel.py attack all              # all 7 stop; a LANDED result is a regression
 ```
 
-| | Attack | Surface | Entry -> stage -> impact | Closed by | Tutorial |
+The catalogue is kept, and kept running, because "we fixed it" is a claim and this is
+the evidence. Every row below is a real attack that lands on the lab branch.
+
+| | Attack | Surface | Entry -> stage -> impact | Stopped by | Tutorial |
 |---|---|---|---|---|---|
 | `a1` | Cross-tenant order leak | 3 | user message -> tool execution -> another customer's data | `SECURE_TENANCY` | [v01](tutorials/v01-cross-tenant-leak.md) |
 | `a2` | Direct injection -> unauthorised refund | 1 | chat input -> pre-model -> irreversible action | `SECURE_INTAKE` | [v02](tutorials/v02-direct-injection.md) |
@@ -169,7 +180,7 @@ layered validation catch? The wrong prediction is the lesson.
 
 ## The controls
 
-Every control is a runtime switch between two functions that **both live in the source**:
+On the lab branch each of these was a runtime switch between two functions:
 
 ```python
 def vulnerable_check(text): ...    # what most teams actually shipped
@@ -179,48 +190,52 @@ def check(text):
     return secure_check(text) if settings.on("SECURE_INTAKE") else vulnerable_check(text)
 ```
 
-Read them side by side. That is the point of the design - the fix is not hidden on another
-branch.
+Here there is one function, and it is the second one:
 
-```
-python kestrel.py controls                              list them
-python kestrel.py attack a1 --control SECURE_TENANCY    one at a time
-python kestrel.py attack a1 --secure                    all of them
+```python
+def check(text) -> Verdict:
+    """Three concentric layers, outermost first."""
 ```
 
-| Control | Block | What it does |
+`git diff main..ollama-solution -- workshop-day1/agent/` is the whole answer key in one
+command. To read a control in place:
+
+```
+python kestrel.py controls        # each mechanism and the file it lives in
+```
+
+| Block | Lives in | What it does |
 |---|---|---|
-| `SECURE_INTAKE` | 2 | three concentric validation layers: structural, content, semantic |
-| `SECURE_PROVENANCE` | 2 | retrieved content is tagged as data, not instruction |
-| `SECURE_TOOLS` | 3 | narrow typed tools - the attack becomes unrepresentable |
-| `SECURE_EGRESS` | 3 | URL allowlist on anything that fetches |
-| `SECURE_TOOL_RESULTS` | 3 | tool output is validated too - the side door |
-| `SECURE_EXECUTOR` | 3 | one chokepoint: validate -> authz -> execute -> validate -> log |
-| `SECURE_AUTHZ` | 4 | RBAC at three levels, checked at the action |
-| `SECURE_TENANCY` | 4 | the tenancy filter, below the model, at the data layer |
-| `SECURE_NO_CREDS_IN_STATE` | 4 | credentials never enter the context window |
+| 2 | `agent/intake.py` | three concentric validation layers: structural, content, semantic |
+| 2 | `agent/retrieval.py` | retrieved content is tagged as data, not instruction |
+| 3 | `agent/tools.py` | narrow typed tools - the attack is unrepresentable |
+| 3 | `agent/tools.py` | URL allowlist on anything that fetches |
+| 3 | `agent/executor.py` | tool output is validated too - the side door |
+| 3 | `agent/executor.py` | one chokepoint: validate -> authz -> execute -> validate -> log |
+| 4 | `agent/authz.py` | RBAC at three levels, checked at the action |
+| 4 | `agent/db.py` | the tenancy filter, below the model, at the data layer |
+| 4 | `agent/graph.py` | credentials never enter the context window |
 
 ---
 
-## Workshop 1 - the brief
+## Workshop 1 - what this build answers
 
 > **INCIDENT TICKET - KESTREL. SUSPENDED, pending security review. Reviewer: you.**
 
-1. Ship a build where the morning's attacks fail - **in code, not by adding "please don't
-   leak data" to the system prompt.**
-2. Prove each fix in the console. Run the attack. Show the panel go green.
+The brief was: ship a build where the morning's attacks fail - **in code, not by adding
+"please don't leak data" to the system prompt** - and prove each fix in the console.
+This branch is that build.
 
-| Phase | What you build | Done when |
-|---|---|---|
-| **A** Intake | structural + content validation; provenance-tag retrieved content | `attack a3` produces **no tool call** |
-| **B** Tools | narrow typed tools; everything through the executor; parameterised queries | `attack a5` - the injection **can't be expressed** |
-| **C** Authority | tenancy filter at the data layer; action-time authz; credentials out of state | `attack a1` - **data boundary stays GREEN** |
-| **D** Attack swap | swap machines, attack your neighbour's build for 15 minutes | every team logs **3+ findings** |
+| Phase | What was built | Where to read it | Proof |
+|---|---|---|---|
+| **A** Intake | structural + content validation; provenance-tagged retrieval | `agent/intake.py`, `agent/retrieval.py` | `attack a3` produces no cross-tenant call |
+| **B** Tools | narrow typed tools; everything through the executor | `agent/tools.py`, `agent/executor.py` | `attack a5` - the injection **can't be expressed** |
+| **C** Authority | tenancy filter at the data layer; action-time authz | `agent/db.py`, `agent/authz.py` | `attack a1` - **data boundary stays GREEN** |
 
-Phase C is the one that matters most. Re-run the opening attack; the light stays green.
+Phase C is the one that matters most. Run the opening attack; the light stays green.
 
 ```
-python kestrel.py attack all --secure
+python kestrel.py attack all
 python kestrel.py test
 ```
 
@@ -230,7 +245,7 @@ python kestrel.py test
 
 ```
 kestrel.py           one command, three operating systems
-config.py            the 18 controls, the profiles, the model settings
+config.py            model settings, and MECHANISMS - a list, not a switchboard
 agent/
   models.py          typed primitives: Content, Principal, Session, ToolCall, Verdict
   db.py              SQLite e-commerce store - AND the tenancy filter (v01)
@@ -238,16 +253,18 @@ agent/
                      sanitiser strips them
   llm.py             mock | ollama | openrouter, behind one interface
   intake.py          surface 1 - three concentric validation layers (v02)
-  retrieval.py       surface 2 - the help centre, and the poisoned article (v03)
-  tools.py           surface 3 - blank-cheque tools vs narrow typed ones (v05)
-  executor.py        the five-step chokepoint (v05, v06)
+  retrieval.py       surface 2 - the help centre, provenance-tagged (v03)
+  tools.py           surface 3 - narrow typed tools; no sql argument exists (v05)
+  executor.py        the five-step chokepoint, the only path to a tool (v05, v06)
   authz.py           RBAC at three levels, at the action (v04)
   telemetry.py       the control-room lights and the event log
   graph.py           LangGraph: state, nodes, conditional edges
 store/               storefront, chat widget, control room, tutorial renderer
-attacks/             the catalogue and the runner
-tutorials/           step-by-step: see the problem, then fix it
-tests/               20 proof tests - each attack must LAND vulnerable and STOP hardened
+attacks/             the catalogue and the runner - all 7 must stop
+tutorials/           the lab-branch walkthrough. Kept for reference: they describe
+                     the journey to this build, so their "flip SECURE_X and re-run"
+                     steps have no switch to flip here.
+tests/               14 proof tests - every attack must STOP, plus the specific claims
 data/kestrel.db      SQLite: customers, orders, refunds, help-centre articles, threads
 ```
 

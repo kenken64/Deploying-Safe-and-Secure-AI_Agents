@@ -35,8 +35,6 @@ def reset() -> None:
 
 # ---- 1. request rate ---------------------------------------------------------------
 def check_session_start() -> None:
-    if not settings.on("SECURE_LIMITS"):
-        return
     now = time.time()
     while _session_starts and now - _session_starts[0] > 60:
         _session_starts.popleft()
@@ -48,15 +46,6 @@ def check_session_start() -> None:
 
 # ---- 2. session execution & 3. loop detection & 4. token budget & 5. cost ----------
 def check_step(session: Session, call: ToolCall | None = None) -> None:
-    if not settings.on("SECURE_LIMITS"):
-        # With limits off the only thing standing between you and an unbounded
-        # run is the graph's recursion limit - which is a framework safety net,
-        # not a control you chose.
-        if session.steps > settings.limit_steps_per_session * 2:
-            board.light("cost_cap", "red",
-                        f"{session.steps} steps in one session, nothing capped it")
-        return
-
     # 2 - hard cap on steps within one session
     if session.steps > settings.limit_steps_per_session:
         _trip("2 session execution", f"{session.steps} steps "

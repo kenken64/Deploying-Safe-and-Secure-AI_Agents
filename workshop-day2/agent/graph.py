@@ -77,7 +77,7 @@ def node_read_message(state: KestrelState) -> dict:
     verdict = intake.check(text)
     board.record(session=session.id, principal=session.principal.id, node="read_message",
                  detail=text[:160], verdict="blocked" if not verdict.allowed else "ok",
-                 control="SECURE_INTAKE" if settings.on("SECURE_INTAKE") else "")
+                 control="intake")
     if not verdict.allowed:
         light = {"structural": "schema_check", "content": "content_filter"}.get(
             verdict.layer, "input_validation")
@@ -121,7 +121,7 @@ def node_consult(state: KestrelState) -> dict:
     return {**placed,
             "transcript": [_line("helpers",
                                  f"{len(summaries)} sub-agent summary/summaries added "
-                                 f"({'quarantined' if settings.on('SECURE_QUARANTINE') else 'TRUSTED AS-IS'})")]}
+                                 f"(quarantined)")]}
 
 
 def node_plan(state: KestrelState) -> dict:
