@@ -64,10 +64,13 @@ class Settings:
     openrouter_base: str = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
 
     # Ollama speaks the OpenAI chat-completions API, so it reuses the same client.
-    # llama3.2:3b supports tool calling and pulls in about 2GB. Alternatives that
-    # also do tools: qwen2.5:3b, qwen2.5:7b, mistral-nemo.
+    # llama3.1:8b pulls about 5GB and is the one to teach on: it lands the whole
+    # Day 2 catalogue and it obeys the poisoned help-centre article. llama3.2:3b
+    # is half the download and works, but it ignores that article and will not
+    # write the Day 2 memory - see the model table in the README. Others that do
+    # tool calling: qwen2.5:7b, mistral-nemo.
     ollama_base: str = os.getenv("OLLAMA_BASE", "http://localhost:11434/v1")
-    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
     @property
     def active_model(self) -> str:

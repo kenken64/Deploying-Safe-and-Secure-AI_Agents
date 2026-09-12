@@ -139,7 +139,7 @@ Three interchangeable providers; the header always says which is running.
 | Provider | What it is | Key | Cost |
 |---|---|---|---|
 | `mock` (default) | deterministic scripted stand-in, and a glass box - every decision says which words steered it | none | free |
-| `ollama` | a real model on your own laptop (`ollama pull llama3.2:3b`) | none | free |
+| `ollama` | a real model on your own laptop (`ollama pull llama3.1:8b`) | none | free |
 | `openrouter` | a real hosted model (`openai/gpt-4.1-nano`) | yes | ~$1-3 per class |
 
 ```
@@ -152,6 +152,20 @@ your controls are the **variable** - when a light goes RED to GREEN, the only th
 changed is your code. **A mock getting steered proves nothing about real LLMs**, so run the
 same attacks against a real one too, or flip the switch in the control room while the room
 is watching.
+
+Day 2 is the catalogue that survives a real model best. Measured on Ollama at temperature 0:
+
+```
+LLM_PROVIDER=ollama OLLAMA_MODEL=llama3.1:8b python kestrel.py attack all
+```
+
+| | vulnerable | hardened |
+|---|---|---|
+| `llama3.1:8b` | **8/8 land** | **8/8 stopped** |
+| `llama3.2:3b` | 7/8 land - b4 does not | **8/8 stopped** |
+
+`llama3.2:3b` will not write the memory in b4; it answers the question instead of calling
+`remember`. Use the 8B model for the interior demos, or the mock.
 
 ---
 

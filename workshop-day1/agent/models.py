@@ -21,6 +21,13 @@ class Content:
     text: str
     origin: Origin
     label: str = ""
+    meta: dict[str, Any] = field(default_factory=dict)
+    """Execution metadata, never model-authored.
+
+    A tool result carries {"tool": name, "args": {...}} so the model layer can
+    replay it as a real `tool` turn instead of pretending it was something the
+    customer said. Provenance again: this says WHICH call produced the text.
+    """
 
     @property
     def trusted(self) -> bool:

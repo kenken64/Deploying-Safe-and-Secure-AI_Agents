@@ -32,11 +32,12 @@ TRUSTED_KEYS = {"system_prompt", "principal_id", "thread_id", "step"}
 
 
 def to_dict(c: Content) -> dict:
-    return {"text": c.text, "origin": c.origin, "label": c.label}
+    return {"text": c.text, "origin": c.origin, "label": c.label, "meta": c.meta}
 
 
 def from_dict(d: dict) -> Content:
-    return Content(text=d["text"], origin=d["origin"], label=d.get("label", ""))
+    return Content(text=d["text"], origin=d["origin"], label=d.get("label", ""),
+                   meta=d.get("meta") or {})
 
 
 def place(state: dict, items: list[Content]) -> dict:

@@ -51,7 +51,7 @@ green"*, *"lab repo & prompt templates: shared in the workshop"*). All of it is 
 | 3 | **Printed *My Agent* sheet** | Nine prompts across two days, converging on the D2 p58 hardening list. Participants will not keep them on scrap paper. | 1 hour |
 | 4 | **Screen recordings of both demos** | The single-point-of-failure mitigation in `04-facilitator-playbook.md`. Record `attack a1 --vulnerable` and `attack b1 --day1-only` on the presenting laptop. | 30 min |
 | 5 | **A dry run with real laptops** | `doctor` covers the common cases, but corporate proxies, Windows Store Python, and locked-down execution policies surface only on real machines. | 2 hours |
-| 6 | **Decide the Ollama policy** | If students are told to use it, the model must be pulled *before* the day — a 2GB download × 20 laptops on venue wifi will not happen live. | a decision |
+| 6 | **Decide the Ollama policy** | If students are told to use it, the model must be pulled *before* the day — a 4.9GB download (`llama3.1:8b`, the default) × 20 laptops on venue wifi will not happen live. `llama3.2:3b` halves that but drops a3 and b4; see the model tables in both READMEs. | a decision |
 
 ### Optional, if you want them
 

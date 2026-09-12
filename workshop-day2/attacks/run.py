@@ -39,6 +39,25 @@ def _fresh() -> None:
     memory.CHECKPOINTS.clear()
 
 
+def _why_stopped(attack: Attack) -> str:
+    """Say WHY it did not land - and do not take credit that is not owed.
+
+    With the mock, "it did not land" means a control stopped it: the model is
+    deterministic, so nothing else could have changed. With a real model it can
+    also mean the model simply did not manage the attack this run - a small local
+    model often cannot chain "look the order up, then use the URL from the row".
+    Reporting that as a control working is how a lab teaches a false lesson.
+    """
+    on = [c for c in attack.closed_by if settings.on(c)]
+    if on:
+        return f"stopped by: {', '.join(on)}"
+    if settings.llm_provider == "mock":
+        return "stopped by: the controls above"
+    return (f"NOT stopped by a control - none of {attack.id}'s controls are on. "
+            f"{settings.active_model} did not take the bait this run. Real models "
+            f"are not deterministic: re-run it, or try a larger one.")
+
+
 def run_one(attack: Attack, verbose: bool = True) -> dict:
     _fresh()
     runner = {"thread_guess": _run_thread_guess,
@@ -74,8 +93,7 @@ def _verdict(attack: Attack, landed: bool) -> None:
         off = [c for c in attack.closed_by if not settings.on(c)]
         print(f"  fix it with: {', '.join(off) if off else '(see the tutorial)'}")
     else:
-        on = [c for c in attack.closed_by if settings.on(c)]
-        print(f"  stopped by: {', '.join(on) if on else 'the controls above'}")
+        print(f"  {_why_stopped(attack)}")
     print(f"  step by step: tutorials/{attack.tutorial}.md")
     print(BAR)
     print()

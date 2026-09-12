@@ -131,6 +131,30 @@ def rows(sql: str, args: tuple = ()) -> list[dict[str, Any]]:
 # ORDER READS - the cell where the whole course starts
 # ======================================================================================
 
+
+def owners_in(text: str) -> dict[str, str]:
+    """order id -> owning customer, for every seeded order this text discloses.
+
+    THE INSTRUMENT, NOT THE CONTROL. The data-boundary light reads the rows a tool
+    returned and asks whose they are - but a real model writes
+    `SELECT ship_to FROM orders WHERE id='ORD-100003'`, and that row no longer
+    carries a customer_id to check. The leak is identical; only the evidence is
+    thinner. So the console resolves ownership against the store instead, matching
+    on the fields that identify an order: its id, its delivery address, its
+    tracking URL.
+
+    This works because the lab's store is tiny and seeded. Do not read it as a
+    pattern - a real deployment tags rows at the data layer (see
+    secure_orders_for) rather than matching strings after the fact.
+    """
+    low = (text or "").lower()
+    found: dict[str, str] = {}
+    for r in rows("SELECT id, customer_id, ship_to, tracking_url FROM orders"):
+        if any(m and str(m).lower() in low for m in (r["id"], r["ship_to"], r["tracking_url"])):
+            found[r["id"]] = r["customer_id"]
+    return found
+
+
 def vulnerable_query(sql: str) -> list[dict[str, Any]]:
     """VULNERABLE (Day 1, slides 10 + 38).
 

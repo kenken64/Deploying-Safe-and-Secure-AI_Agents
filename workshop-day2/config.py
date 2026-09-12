@@ -60,8 +60,10 @@ class Settings:
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
     model: str = os.getenv("KESTREL_MODEL", "openai/gpt-4.1-nano")
     openrouter_base: str = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
+    # llama3.1:8b lands all eight interior attacks. llama3.2:3b is half the
+    # download but will not write the memory in b4 - see the README model table.
     ollama_base: str = os.getenv("OLLAMA_BASE", "http://localhost:11434/v1")
-    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
     db_path: str = os.getenv("KESTREL_DB", "data/kestrel.db")
     checkpoint_path: str = os.getenv("KESTREL_CHECKPOINTS", "data/checkpoints.db")
