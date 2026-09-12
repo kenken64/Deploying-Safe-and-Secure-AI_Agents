@@ -69,6 +69,10 @@ blockquote{border-left:3px solid var(--accent);margin:14px 0;padding:2px 0 2px 1
 .ctl .k{font:12px var(--mono);color:var(--dim);min-width:210px}
 .ctl.on{border-color:var(--green)} .ctl.on .k{color:var(--green)}
 .ctl .blk{margin-left:auto;font-size:11px;color:var(--dim)}
+/* A row that IS a fix, on the solution branch. Red so the answer key reads as
+   the answer key at a glance - everything else keeps its usual colour. */
+.ctl.fix{border-color:var(--red)}
+.ctl.fix span,.ctl.fix .k,.ctl.fix code{color:var(--red)}
 .pill{display:inline-block;font:11px var(--mono);padding:2px 7px;border-radius:999px;
   border:1px solid var(--edge);color:var(--dim);margin-right:5px}
 .approve{display:flex;gap:9px;align-items:center;padding:10px;border:1px solid var(--amber);
