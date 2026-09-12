@@ -50,6 +50,9 @@ The container keeps its `.venv` in a named volume, so it never disturbs a virtua
 built on your host — you can have the lab checked out and running natively while the
 answer key runs in a container.
 
+Both configurations have been built and run end to end (`devcontainer up`, linux/aarch64,
+Python 3.12): 14 + 22 tests pass and all 15 attacks stop inside the container.
+
 A **LANDED** result here is a regression, not a lesson. The runner says so and exits
 non-zero, so this branch is also the thing to point CI at.
 
