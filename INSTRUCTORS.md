@@ -158,6 +158,10 @@ Two things worth knowing before you recommend it to a room:
 Codespaces builds it in a couple of minutes; a first local build is longer, so tell anyone
 planning to use it to open the repo once **the day before**, not at 9am.
 
+Both configurations have been built and run end to end (`devcontainer up`, linux/aarch64,
+Python 3.12): 20 + 30 tests pass, `a1` and `b1` land, everything stops with `--secure`, and
+the storefront, control room and tutorials all serve on port 8000 from inside.
+
 If a laptop is locked down and a dev container is not an option:
 
 ```bash
