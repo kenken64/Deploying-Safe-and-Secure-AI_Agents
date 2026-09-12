@@ -16,9 +16,14 @@ and what the workshop lab has to provide for the "done when" criteria to be chec
 
 ## Read in this order
 
+**These notes describe the course, and the course is taught from the lab branch,
+`ollama-real-model-support`** - start at that branch's `INSTRUCTORS.md`. On this branch,
+[`../INSTRUCTORS.md`](../INSTRUCTORS.md) covers the answer key: when to show it, how to
+grade with it, and the debrief script.
+
 | If you are… | Read |
 |---|---|
-| Lead instructor, first time | `00` → `01` → `02` → `04` |
+| Lead instructor, first time | `../INSTRUCTORS.md` → `00` → `01` → `02` → `04` |
 | Co-instructor / second pair of hands | `00` → `04` → `05` |
 | Building on the Kestrel lab + console | `00` → `03` → `05` → `06`, then `../workshop-day1/README.md` |
 | Writing the MCQs | `01`, `02` (the "trap" callouts) → `04` (seed bank) |

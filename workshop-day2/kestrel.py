@@ -38,8 +38,18 @@ def venv_python() -> Path:
 
 
 def inside_venv() -> bool:
+    """True when we are already running inside THIS lab's .venv.
+
+    Compare prefixes, not interpreters. On macOS and Linux `.venv/bin/python` is a
+    symlink to the interpreter that built it, so
+    `Path(sys.executable).resolve() == venv_python().resolve()` collapses both
+    sides onto the same Homebrew/system binary and answers True from OUTSIDE the
+    venv - the re-exec is skipped and the command dies on `import langgraph`.
+    `sys.prefix` is the venv directory inside, and the base install outside, so it
+    cannot be fooled that way.
+    """
     try:
-        return Path(sys.executable).resolve() == venv_python().resolve()
+        return Path(sys.prefix).resolve() == VENV.resolve()
     except OSError:
         return False
 

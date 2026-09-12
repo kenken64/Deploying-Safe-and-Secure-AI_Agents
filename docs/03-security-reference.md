@@ -4,7 +4,7 @@ The decks carry signatures, three-line sketches and diagrams. This file turns th
 reference you can hand a participant, and into the spec the Kestrel Goat lab implements.
 
 **Provenance:** every *concept* here is `▸ Deck`. Every *code block* is `▸ Added` — illustrative
-Python written for these notes, matching the lab in `../kestrel-goat/`.
+Python written for these notes, matching the labs in `../workshop-day1/` and `../workshop-day2/`.
 
 ---
 

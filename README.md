@@ -23,6 +23,10 @@ NUS-ISS · Institute of Systems Science, National University of Singapore
 
 ## Start here
 
+> **Teaching this course?** You want the lab branch, `ollama-real-model-support`, and its
+> `INSTRUCTORS.md`. For what to do with *this* branch - when to show the answer key, how to
+> grade with it, and the debrief script - see **[`INSTRUCTORS.md`](INSTRUCTORS.md)**.
+
 | | |
 |---|---|
 | **[Day 1 - The edge](workshop-day1/)** | *The agent will be steered.* Constrain what it can reach and do. |
