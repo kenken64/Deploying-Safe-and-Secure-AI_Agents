@@ -94,6 +94,7 @@ checking with the other instructor.
 ```
 INSTRUCTORS.md       this page
 README.md            the repo front door - point participants here
+.devcontainer/       one-click environment: Day 1 and Day 2 configurations
 docs/                the eight teaching documents above
 slides/              the two decks the course is taught from
 workshop-day1/       THE EDGE. 7 attacks, 9 controls, 20 proof tests
@@ -132,7 +133,32 @@ end in `READY`.
 Python 3.10 or newer. That is the whole list. No API key, no Docker, no network — the
 default model runs offline. Send them `workshop-day1/README.md` and nothing else.
 
-If a laptop is locked down:
+**Or nothing at all, if they use the dev container.** Opening the repo in VS Code with the
+Dev Containers extension, or in GitHub Codespaces, offers two configurations:
+
+| Configuration | Opens on |
+|---|---|
+| **Kestrel Goat - Day 1 (the edge)** | `workshop-day1` — the default |
+| **Kestrel Goat - Day 2 (the interior)** | `workshop-day2` |
+
+Either one installs **both** labs, seeds both databases, runs `doctor` on each and
+forwards port 8000, then prints the first command to type. Config lives in
+[`.devcontainer/`](.devcontainer/); the provisioning is
+[`.devcontainer/setup.sh`](.devcontainer/setup.sh), which is just the same
+`kestrel.py setup` a student would run by hand.
+
+Two things worth knowing before you recommend it to a room:
+
+- **It does not touch their host `.venv`.** The container keeps its own in a named volume,
+  so a virtualenv built on macOS or Windows is neither overwritten nor visible inside.
+- **Ollama is not in the image** — a 5GB model does not belong in a container students
+  rebuild. `OLLAMA_BASE` already points at `host.docker.internal`, so a student running
+  Ollama on their host gets `LLM_PROVIDER=ollama` working from inside with no extra setup.
+
+Codespaces builds it in a couple of minutes; a first local build is longer, so tell anyone
+planning to use it to open the repo once **the day before**, not at 9am.
+
+If a laptop is locked down and a dev container is not an option:
 
 ```bash
 docker build -t kestrel-goat-day1 . && docker run --rm -p 8000:8000 kestrel-goat-day1

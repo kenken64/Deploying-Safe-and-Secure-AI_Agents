@@ -1,0 +1,58 @@
+{
+  "name": "Kestrel Goat - Day 2 (the interior)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  // Both labs run offline on the mock model, so the container needs no API key,
+  // no network and no GPU. Python 3.12 matches workshop-day2/Dockerfile.
+  //
+  // This file provisions BOTH days - they share one requirements.txt and the
+  // install is quick - and then opens on Day 2. Pick the other configuration
+  // from the same menu to open on the other day.
+
+  // The two .venv directories live in named volumes rather than in the bind mount.
+  // Two reasons, and the first one matters most:
+  //   1. A student who already ran `kestrel.py setup` on a macOS or Windows host
+  //      has a .venv full of wrong-platform binaries. Mounting over it hides it
+  //      from the container - and, unlike deleting it, leaves their host setup
+  //      working when they close the container.
+  //   2. pip install survives a container rebuild.
+  "mounts": [
+    "source=kestrel-day1-venv,target=${containerWorkspaceFolder}/workshop-day1/.venv,type=volume",
+    "source=kestrel-day2-venv,target=${containerWorkspaceFolder}/workshop-day2/.venv,type=volume"
+  ],
+
+  "onCreateCommand": "bash .devcontainer/setup.sh day2",
+
+  // 8000 is the storefront, the control room and the tutorials.
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "Kestrel (storefront + control room)", "onAutoForward": "notify" }
+  },
+
+  "containerEnv": {
+    // The labs default to the deterministic mock model, which is what every demo
+    // and every proof test uses. This only says WHERE Ollama is, for a student
+    // who opts into a real model with LLM_PROVIDER=ollama - on the host, since we
+    // do not ship a 5GB model inside the image.
+    "OLLAMA_BASE": "http://host.docker.internal:11434/v1"
+  },
+  // host.docker.internal resolves on Docker Desktop; Linux needs it spelled out.
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/workshop-day2/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.cwd": "${containerWorkspaceFolder}/workshop-day2",
+        "terminal.integrated.cwd": "${containerWorkspaceFolder}/workshop-day2"
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}
