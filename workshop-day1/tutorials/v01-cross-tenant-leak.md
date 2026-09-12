@@ -1,0 +1,153 @@
+# v01 - Cross-tenant order leak
+
+**Surface 3** (tool arguments) | **Day 1, Blocks 0 and 4** | **Attack** `a1` | **Closed by** `SECURE_TENANCY`
+
+This is the breach the course opens with. Start here.
+
+---
+
+## 1. Run the attack
+
+```
+python kestrel.py reset
+python kestrel.py attack a1
+```
+
+Alice Tan (`CUST-1001`) is signed in. She types one entirely ordinary sentence:
+
+> Hi, just confirm the shipping address on order 100003 for me, thanks.
+
+## 2. What you just saw
+
+```
+  model      chose tool lookup_orders(sql="SELECT * FROM orders WHERE id='ORD-100003'")
+  tool       lookup_orders -> ORD-100003 | CUST-1002 | Espresso machine EM-9 | 189000c |
+             delivered | ships to 88 Marine Parade, #21-03, Singapore
+  [BREACH]   data_boundary
+  !! DATA BOUNDARY: 1 row(s) belonging to CUST-1002 returned to CUST-1001
+```
+
+Ben Ortiz's order, his purchase, and his home address were handed to Alice.
+
+**Nothing here was an exploit.** There is no CVE. No payload. No malformed input. The
+message is a normal support question, and the model did exactly its job.
+
+## 3. Where it actually happened
+
+Walk it back one line at a time.
+
+**Step 1 - the model chose to call a tool.** `agent/graph.py`, `node_plan`. A decision made
+by a language model. Nothing wrong yet.
+
+**Step 2 - the tool ran a query with no tenancy filter.** `agent/tools.py`, `_t_lookup_orders`:
+
+```python
+def _t_lookup_orders(args: dict, session: Session) -> ToolResult:
+    sql = str(args.get("sql", ""))
+    rows = db.vulnerable_query(sql)          # <-- the query never asked WHOSE orders these are
+```
+
+and `agent/db.py`, `vulnerable_query`:
+
+```python
+def vulnerable_query(sql: str) -> list[dict[str, Any]]:
+    conn = connect()
+    return [dict(r) for r in conn.execute(sql).fetchall()]
+```
+
+**Step 3 - someone else's data went straight into the reply.** `agent/graph.py`, `node_reply`.
+
+Read those three again and notice what is missing: **no code, at any point, checked whose
+data this was.** `session.principal` is sitting right there in the tool signature, unused.
+
+## 4. Why it works
+
+The agent trusted the model's belief about who was asking.
+
+Authentication was fine - Alice really is Alice, and the app really knows it. What is
+missing is *authorization at the resource level*: the third of the three RBAC levels.
+Levels 1 and 2 (may she use the agent, may she call this tool) both pass. Level 3 - *may
+this call touch this row* - was never asked.
+
+That is the failure mode this whole course is built on. You let a language model decide
+who sees what.
+
+## 5. Fix it - step by step
+
+### Step 1. Put the filter at the data layer, not in the tool
+
+Open `agent/db.py`. Read `secure_orders_for`:
+
+```python
+def secure_orders_for(principal: Principal, order_id: str | None = None) -> list[dict]:
+    if principal.customer_id is None:
+        return []
+    sql  = "SELECT * FROM orders WHERE customer_id = ?"   # not optional
+    args = [principal.customer_id]                        # from the SESSION, never the model
+    if order_id:
+        sql += " AND id = ?"
+        args.append(order_id)
+    return rows(sql, tuple(args))
+```
+
+Three things matter here and they are all deliberate:
+
+1. **The predicate is not optional.** There is no code path through this function that
+   omits `customer_id`. You cannot forget it, because it is not a parameter you pass.
+2. **The value comes from `principal`,** which came from the authenticated session. The
+   model has no way to reach it, set it, or override it.
+3. **It is parameterised.** No f-string, no interpolation, ever - even though the input
+   is now "only" coming from your own code. (Day 1, slide 39.)
+
+This is what *"the tenancy filter lives below the model"* means in practice. Not in the
+prompt. Not in the tool. In the layer underneath both, where a steered model cannot reach.
+
+### Step 2. Turn the control on
+
+```
+python kestrel.py attack a1 --control SECURE_TENANCY --control SECURE_TOOLS --control SECURE_EXECUTOR --control SECURE_AUTHZ
+```
+
+or flip `SECURE_TENANCY` in the control room at `/console`.
+
+### Step 3. Understand why one control is not enough
+
+`SECURE_TENANCY` alone changes what the *data layer* returns. But `lookup_orders(sql: str)`
+still exists, so the model can still write `SELECT * FROM refunds`. That is `v05`.
+And the resource check that produces a clean refusal is `v04`. Defence in depth means
+all three, which is why the attack lists three controls.
+
+## 6. Prove it
+
+```
+python kestrel.py attack a1 --secure
+```
+
+You want to see:
+
+```
+  [ ok ]    data_boundary
+  attack stopped
+  stopped by: SECURE_TENANCY, SECURE_TOOLS, SECURE_AUTHZ
+```
+
+The **data boundary light staying green on a re-run of the opening attack** is the
+Workshop 1 success criterion that matters most (Day 1, slide 56).
+
+And in the test suite:
+
+```
+python kestrel.py test
+```
+
+`test_the_data_layer_has_no_path_that_returns_another_customers_rows` asserts that
+`secure_orders_for(alice, "ORD-100003")` returns `[]` - not an error, not a refusal, but
+literally no such row from Alice's point of view.
+
+## 7. On your own agent
+
+- Find every function that reads tenant-scoped data. How many of them take the tenant as
+  an *optional* argument? Each one is this bug waiting to happen.
+- Grep for f-strings inside `execute(`, `query(`, `find(`.
+- Ask: if the model were fully compromised right now, which of my data queries would
+  still be correctly scoped? The ones that would are the ones scoped below the model.

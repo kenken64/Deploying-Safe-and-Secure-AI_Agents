@@ -1,0 +1,22 @@
+# virtualenvs (each workshop folder creates its own)
+.venv/
+venv/
+env/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# the labs' seeded databases - regenerate with: python kestrel.py reset
+*.db
+data/*.db
+
+# secrets - never commit. .env.example is the template and is committed.
+.env
+*.key
+
+# os
+.DS_Store
+Thumbs.db

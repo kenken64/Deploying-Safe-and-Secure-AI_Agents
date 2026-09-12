@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% block title %}Kestrel Coffee &middot; Support{% endblock %}
+{% block body %}
+<h1>Your orders</h1>
+<p class="note">Signed in as <strong>{{ p.display_name }}</strong> ({{ p.id }}).
+  Switch accounts in the <a href="/console">control room</a> to see the attack from the other side.</p>
+
+<div class="grid" style="margin-top:18px">
+  <div class="panel">
+    <h2>Orders</h2>
+    <p class="sub">What this account is actually entitled to see.</p>
+    <table><tr><th>Order</th><th>Item</th><th>Amount</th><th>Status</th></tr>
+    {% for o in orders %}<tr><td><code>{{ o.id }}</code></td><td>{{ o.product }}</td>
+      <td>${{ '%.2f'|format(o.amount_cents/100) }}</td><td>{{ o.status }}</td></tr>
+    {% else %}<tr><td colspan="4">No orders on this account.</td></tr>{% endfor %}
+    </table>
+    <p class="note">Help centre: {% for a in articles %}<span class="pill">{{ a.id }}</span>{% endfor %}</p>
+  </div>
+
+  <div class="panel">
+    <h2>Kestrel Support</h2>
+    <p class="sub">Clean. Familiar. Unthreatening.</p>
+    <div class="chat" id="chat">
+      <div class="msg agent">Hi! How can I help today?</div>
+    </div>
+    <div class="row" style="margin-top:11px">
+      <input id="text" placeholder="Where is my order?" autocomplete="off">
+      <button class="primary" id="send">Send</button>
+    </div>
+    <p class="note">Watch the <a href="/console">control room</a> in a second window while you type.</p>
+  </div>
+</div>
+{% endblock %}
+{% block script %}<script>
+const chat = document.getElementById('chat'), box = document.getElementById('text');
+function add(cls, text){ const d=document.createElement('div'); d.className='msg '+cls;
+  d.textContent=text; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+async function send(){
+  const text = box.value.trim(); if(!text) return;
+  add('user', text); box.value=''; add('sys','...');
+  const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text})});
+  const d = await r.json();
+  chat.removeChild(chat.lastChild);
+  add('agent', d.reply || '(no reply)');
+  const red = Object.entries(d.lights||{}).filter(([k,v])=>v==='red');
+  if(red.length) add('sys','control room: '+red.map(([k])=>k).join(', ')+' RED');
+}
+document.getElementById('send').onclick = send;
+box.addEventListener('keydown', e => { if(e.key==='Enter') send(); });
+</script>{% endblock %}

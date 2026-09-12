@@ -1,0 +1,100 @@
+{% extends "base.html" %}{% block title %}{{ title }} &middot; Kestrel Goat{% endblock %}
+{% block body %}
+<div class="grid" style="grid-template-columns:280px 1fr">
+  <div class="panel">
+    <h2>Walkthrough</h2>
+    <p class="sub">In order. Each one: see the problem, then fix it.</p>
+    <ul class="toc">
+      {% for i in items %}<li><a href="/tutorial/{{ i.slug }}">{{ i.title }}</a></li>{% endfor %}
+    </ul>
+  </div>
+  <div>
+  {% if lab %}
+  <div class="panel lab" style="margin-bottom:18px">
+    <h2>The loop</h2>
+    <p class="sub">Run it. See it land. Read why. Apply the fix. Run it again.
+      You never leave this page.</p>
+
+    <div class="step">
+      <span class="n">1</span>
+      <div class="meta"><b>Run the attack against the build you have now</b>
+        {% for a in lab.attacks %}<br><span>{{ a.id|upper }} &middot; {{ a.name }}</span>{% endfor %}
+      </div>
+      {% for a in lab.attacks %}
+      <button onclick="runLab('{{ a.id }}')">Run {{ a.id|upper }}</button>
+      {% endfor %}
+    </div>
+
+    <div class="step"><span class="n">2</span>
+      <div class="meta"><b>Read what happened, and why</b>
+        <br><span>The walkthrough below goes to the exact line that allowed it.</span></div>
+    </div>
+
+    <div class="step"><span class="n">3</span>
+      <div class="meta"><b>Apply the fix</b>
+        <br><span>Each switch selects between a <code>vulnerable_*</code> and a
+        <code>secure_*</code> function that both live in the source. Open the file,
+        read them side by side, then flip it.</span>
+        <div class="controls" style="margin-top:9px">
+        {% for c in lab.controls %}
+          <label class="ctl {% if c.on %}on{% endif %}" data-key="{{ c.key }}">
+            <input type="checkbox" style="width:auto" {% if c.on %}checked{% endif %}
+                   onchange="labToggle('{{ c.key }}', this.checked)">
+            <span class="k">{{ c.key }}</span><span>{{ c.label }}</span>
+          </label>
+        {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="step"><span class="n">4</span>
+      <div class="meta"><b>Prove it</b>
+        <br><span>Run the same attack again. The light goes green, and that is the
+        proof you would show your own tech lead.</span></div>
+      {% for a in lab.attacks %}
+      <button class="primary" onclick="runLab('{{ a.id }}')">Re-run {{ a.id|upper }}</button>
+      {% endfor %}
+    </div>
+
+    <div id="labout"></div>
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    {% if body %}{{ body|safe }}
+    {% else %}
+      <h1>Tutorials</h1>
+      <p>Every vulnerability in this lab has a walkthrough: run the attack, watch it
+      land, walk to the exact line that allowed it, apply the fix, re-run, watch the
+      light go green.</p>
+      <p class="note">Work through them in order. They mirror the Day 1 teaching blocks.</p>
+    {% endif %}
+  </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}<script>
+function labPaint(d){
+  const lights = (d.board.lights||[]).map(l =>
+    `<div class="light ${l.level}"><span class="dot"></span>${l.label}
+     <span class="level">${l.level.toUpperCase()}</span></div>`).join('');
+  const trace = (d.transcript||[]).map(t =>
+    `<div class="${t.kind==='why'?'warn':(t.kind==='blocked'?'alert':'info')}">
+      ${t.kind.padEnd(10)} ${(t.text||'').slice(0,170)}</div>`).join('');
+  document.getElementById('labout').innerHTML =
+    `<div class="verdict ${d.landed?'bad':'good'}">${d.landed
+        ? 'ATTACK LANDED - it is not fixed yet' : 'ATTACK STOPPED - that is the proof'}</div>
+     <div class="lights">${lights}</div>
+     <div class="log">${trace||'<div class="info">(no trace)</div>'}</div>`;
+  document.getElementById('labout').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+async function runLab(id){
+  document.getElementById('labout').innerHTML = '<div class="log info">running ' + id.toUpperCase() + ' ...</div>';
+  labPaint(await (await fetch('/api/attack/'+id,{method:'POST'})).json());
+}
+async function labToggle(key,on){
+  await fetch('/api/controls',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key,on})});
+  document.querySelector(`[data-key="${key}"]`).classList.toggle('on', on);
+}
+</script>{% endblock %}

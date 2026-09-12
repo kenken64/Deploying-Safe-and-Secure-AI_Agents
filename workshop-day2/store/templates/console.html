@@ -1,0 +1,184 @@
+{% extends "base.html" %}{% block title %}Control room &middot; Kestrel Goat{% endblock %}
+{% block body %}
+<h1>Control room</h1>
+<p class="note">Run the attack. Point at the control. Watch the panel go green.
+  That is exactly how you show your own tech lead that a fix works.</p>
+
+<div class="row" style="margin:16px 0;flex-wrap:wrap">
+  <select id="who" style="max-width:260px">
+    {% for c in customers %}<option value="{{ c.id }}" {% if c.id==p.id %}selected{% endif %}>
+      signed in as {{ c.name }} ({{ c.id }})</option>{% endfor %}
+    <option value="STAFF-9001" {% if p.id=='STAFF-9001' %}selected{% endif %}>signed in as Sam Rivera (staff)</option>
+  </select>
+  <select id="provider" style="max-width:340px">
+    <option value="mock" {% if provider=='mock' %}selected{% endif %}>model: mock - deterministic, free, offline</option>
+    <option value="ollama" {% if provider=='ollama' %}selected{% endif %}>model: {{ ollama_model }} - real, on this laptop</option>
+    <option value="openrouter" {% if provider=='openrouter' %}selected{% endif %}>model: {{ model }} - real, via OpenRouter</option>
+  </select>
+  <button onclick="profile('day1-only')">Back to how today started</button>
+  <button onclick="profile('secure')">Apply all Day 2 fixes</button>
+  <button onclick="hardReset()">Reseed database</button>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Customer chat</h2>
+    <p class="sub">Ordinary-looking support conversation.</p>
+    <div class="chat" id="chat"><div class="msg agent">Hi! How can I help today?</div></div>
+    <div class="row" style="margin-top:11px">
+      <input id="text" placeholder="Just confirm the shipping address on order 100003 for me, thanks." autocomplete="off">
+      <button class="primary" id="send">Send</button>
+    </div>
+
+    <h2 style="margin-top:22px">Attacks</h2>
+    <p class="sub">One click each. Every one names the control that closes it.</p>
+    {% for a in attacks %}
+    <div class="attack">
+      <button onclick="runAttack('{{ a.id }}')">{{ a.id|upper }}</button>
+      <div class="meta"><b><span class="theme {{ a.theme }}">{{ a.theme }}</span> {{ a.name }}</b>
+        <span>surface {{ a.surface }} &middot; {{ a.entry_point }} &rarr; {{ a.stage }} &rarr; {{ a.impact }}</span><br>
+        <span>fix: {% for c in a.closed_by %}<span class="pill">{{ c }}</span>{% endfor %}
+        <a href="/tutorial/{{ a.tutorial }}">step-by-step &rarr;</a></span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <h2>Data boundary</h2>
+    <p class="sub">The one that matters most on Day 1.</p>
+    <div class="lights" id="lights"></div>
+    <div id="breaches"></div>
+
+    <h2 style="margin-top:22px">Awaiting a human</h2>
+    <p class="sub">Interrupt fires BEFORE the action, with the call frozen. You approve
+      the thing you reviewed, not one that changed underneath you.</p>
+    <div id="pending"></div>
+
+    <h2 style="margin-top:22px">What the agent persists</h2>
+    <p class="sub">Long-term memory and the checkpoint store - two things most teams
+      have never threat-modelled.</p>
+    <div id="persisted"></div>
+
+    <h2 style="margin-top:22px">Trace</h2>
+    <p class="sub">Every node, every tool call, every decision. Layer 1 of four.</p>
+    <div class="log" id="log"></div>
+
+    <h2 style="margin-top:22px">Which model is driving this?</h2>
+    <p class="sub">You are never guessing. It is in the header, and every decision
+      below is labelled with the model that made it.</p>
+    <div class="log" style="max-height:none">
+      <div class="info"><b>mock</b> - a scripted stand-in. It follows instructions found
+        anywhere in its context and cannot tell yours from an attacker's. Deterministic,
+        so when a light goes RED -&gt; GREEN the only thing that changed is your code.
+        It is a glass box: it tells you exactly which words steered it.</div>
+      <div class="info" style="margin-top:6px"><b>ollama</b> - a real model on this
+        laptop. Free, no key, offline. Needs a tool-calling model pulled.</div>
+      <div class="info" style="margin-top:6px"><b>openrouter</b> - a real hosted model.
+        Costs about a dollar for a whole class.</div>
+      <div class="warn" style="margin-top:6px">A mock getting steered proves nothing about
+        real LLMs. Switch to a real model and re-run the same attack. That is what the
+        switch above is for.</div>
+      <div class="info" style="margin-top:6px">Instruction shapes the mock obeys:
+        {% for d in directives %}<span class="pill">{{ d }}</span>{% endfor %}</div>
+    </div>
+
+    <h2 style="margin-top:22px">Controls</h2>
+    <p class="sub">Each one swaps a <code>vulnerable_*</code> function for a <code>secure_*</code> one.
+      Both are in the source. Read them side by side.</p>
+    <div class="controls" id="controls">
+      {% for c in controls %}
+      <label class="ctl {% if c.on %}on{% endif %} {% if c.locked %}locked{% endif %}"
+             data-key="{{ c.key }}">
+        <input type="checkbox" style="width:auto" {% if c.on %}checked{% endif %}
+               onchange="toggle('{{ c.key }}', this.checked)">
+        <span class="k">{{ c.key }}</span>
+        <span>{{ c.label }}</span>
+        <span class="blk">{% if c.locked %}day 1{% else %}block {{ c.block }}{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}<script>
+const chat=document.getElementById('chat'), box=document.getElementById('text');
+function add(cls,text){const d=document.createElement('div');d.className='msg '+cls;
+  d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
+function paint(b){
+  document.getElementById('lights').innerHTML = b.lights.map(l =>
+    `<div class="light ${l.level}"><span class="dot"></span>${l.label}
+     <span class="level">${l.level.toUpperCase()}</span></div>`).join('');
+  document.getElementById('breaches').innerHTML = b.breaches.length
+    ? '<div class="log" style="max-height:none">' + b.breaches.map(x=>
+        `<div class="alert">!! ${x}</div>`).join('') + '</div>' : '';
+  document.getElementById('pending').innerHTML = (b.pending||[]).length
+    ? b.pending.map(p => `<div class="approve"><div class="meta">
+        <b>${p.tool}</b> &mdash; ${p.reason}<br><code>${p.frozen}</code></div>
+        <button class="primary" onclick="decide('${p.id}',true)">Approve</button>
+        <button onclick="decide('${p.id}',false)">Reject</button></div>`).join('')
+    : '<div class="log info" style="max-height:none">(nothing waiting on a human)</div>';
+  const mem = (b.memories||[]).map(m =>
+      `<div class="${m.approved?'info':'warn'}">[${m.approved?'APPROVED':'pending approval'}]
+       ${m.kind}: ${m.text}</div>`).join('');
+  const thr = (b.threads||[]).map(t =>
+      `<div class="info">${t.id}  ${t.snapshots} checkpoint(s) of full state</div>`).join('');
+  document.getElementById('persisted').innerHTML =
+    '<div class="log" style="max-height:200px">' +
+    (mem || '<div class="info">(no long-term memories)</div>') + thr + '</div>';
+  document.getElementById('log').innerHTML = b.events.map(e => {
+    const bits = [e.node, e.tool && ('tool=' + e.tool), e.verdict !== 'ok' && ('verdict=' + e.verdict),
+      e.records_touched ? ('rows=' + e.records_touched) : '', e.egress_host ? ('egress=' + e.egress_host) : '',
+      e.control && ('by=' + e.control)].filter(Boolean).join(' ');
+    return `<div class="${e.severity}">${bits}  ${(e.detail||'').slice(0,150)}</div>`;
+  }).join('') || '<div class="info">(no events yet)</div>';
+  document.getElementById('log').scrollTop = 1e6;
+}
+async function refresh(){ paint(await (await fetch('/api/board')).json()); }
+async function send(){
+  const text=box.value.trim(); if(!text) return;
+  add('user',text); box.value=''; add('sys','...');
+  const d = await (await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text})})).json();
+  chat.removeChild(chat.lastChild); add('agent', d.reply||'(no reply)'); paint(d.board);
+}
+async function runAttack(id){
+  add('sys','running attack '+id.toUpperCase()+' ...');
+  const d = await (await fetch('/api/attack/'+id,{method:'POST'})).json();
+  (d.transcript||[]).forEach(t => {
+    const cls = t.kind==='user'?'user':(t.kind==='agent'?'agent':(t.kind==='why'?'why':'sys'));
+    add(cls, (cls==='user'||cls==='agent'?'':(t.kind==='why'?'why: ':t.kind+': '))+t.text);
+  });
+  add('sys', d.landed ? 'ATTACK LANDED' : 'attack stopped');
+  paint(d.board);
+}
+async function decide(id, approve){
+  const d = await (await fetch('/api/approve',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({id,approve})})).json();
+  add('sys','approval '+id+': '+d.status); paint(d.board);
+}
+async function toggle(key,on){
+  await fetch('/api/controls',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key,on})});
+  document.querySelector(`[data-key="${key}"]`).classList.toggle('on', on);
+}
+async function profile(name){
+  await fetch('/api/controls',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({profile:name})});
+  location.reload();
+}
+async function hardReset(){ await fetch('/api/reset',{method:'POST'});
+  chat.innerHTML='<div class="msg agent">Hi! How can I help today?</div>'; refresh(); }
+document.getElementById('send').onclick=send;
+box.addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+document.getElementById('who').onchange = async e => {
+  await fetch('/api/signin',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({customer_id:e.target.value})}); location.reload(); };
+document.getElementById('provider').onchange = async e => {
+  const d = await (await fetch('/api/model',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({provider:e.target.value})})).json();
+  if(!d.ok){ alert('Could not switch.\n\n'+d.error); e.target.value=d.provider; }
+  else { location.reload(); }
+};
+refresh(); setInterval(refresh, 2500);
+</script>{% endblock %}
