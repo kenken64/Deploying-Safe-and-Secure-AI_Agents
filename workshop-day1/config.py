@@ -37,7 +37,7 @@ CONTROLS: dict[str, dict] = {
     "SECURE_NO_CREDS_IN_STATE": dict(day=1, block=4, label="Credentials out of the context",   tutorial="v04-authz-at-action-time"),
 }
 
-# Named profiles, for `make day1-secure` and the console preset buttons.
+# Named profiles, for `kestrel.py attack --secure` and the console preset buttons.
 PROFILES: dict[str, list[str]] = {
     "vulnerable": [],          # how the app ships. Every attack works.
     "secure":     list(CONTROLS),   # the build Workshop 1 asks you to reach.

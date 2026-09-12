@@ -13,6 +13,10 @@ NUS-ISS · Institute of Systems Science, National University of Singapore
 
 ## Start here
 
+> **Teaching this course?** Start at **[`INSTRUCTORS.md`](INSTRUCTORS.md)** - what to read
+> in what order, how to set a machine up, which model to run, and the words for both live
+> demos.
+
 | | |
 |---|---|
 | **[Day 1 - The edge](workshop-day1/)** | *The agent will be steered.* Constrain what it can reach and do. |

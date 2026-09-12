@@ -16,9 +16,13 @@ and what the workshop lab has to provide for the "done when" criteria to be chec
 
 ## Read in this order
 
+**New to the repo? Read [`../INSTRUCTORS.md`](../INSTRUCTORS.md) before any of these.** It
+covers the branches, machine setup, the model decision and the demo scripts; these files
+are the teaching content it points into.
+
 | If you are… | Read |
 |---|---|
-| Lead instructor, first time | `00` → `01` → `02` → `04` |
+| Lead instructor, first time | `../INSTRUCTORS.md` → `00` → `01` → `02` → `04` |
 | Co-instructor / second pair of hands | `00` → `04` → `05` |
 | Building on the Kestrel lab + console | `00` → `03` → `05` → `06`, then `../workshop-day1/README.md` |
 | Writing the MCQs | `01`, `02` (the "trap" callouts) → `04` (seed bank) |

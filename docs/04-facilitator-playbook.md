@@ -13,7 +13,7 @@ professional room will raise, and a seed MCQ bank.
 |---|---|
 | Projection | Two surfaces if possible: slides **and** the live control room. The demos are two-pane (chat / control room) and lose their force on one small screen. |
 | Wall | Physical space for the **Attack Board** — it stays up for two days (D1 p16: *"This goes on the wall now and it stays up"*). A3 printout + marker beats a slide. |
-| Participant machines | Python 3.11+, Docker optional. The lab (`../kestrel-goat/`) runs offline on the mock model — **no API key required to complete any workshop phase**. |
+| Participant machines | Python 3.10+, Docker optional. The labs (`../workshop-day1/`, `../workshop-day2/`) run offline on the mock model — **no API key required to complete any workshop phase**. |
 | Network | Only needed for the optional real-model runs and the online MCQs. Have the MCQs work on phones. |
 | Timers | Visible countdown. The decks specify exact timers (3:00, 25:00, 12:00, 15:00, 10:00, 5:00) — honour them; they're load-bearing for the day's pacing. |
 | Printouts | The 8-surface matrix (D1 p16), the action-sort cards (D1 p51), the *My Agent* sheet (8 numbered lines). |
@@ -105,10 +105,12 @@ Both days open on a live demo. Both are unrecoverable if they fail.
 **Pre-flight (run both, morning of, before the room fills):**
 
 ```bash
-cd kestrel-goat
-make demo-day1     # cross-tenant leak: data boundary goes RED
-make demo-day2     # indirect injection via retrieved content: input GREEN, boundary RED
+cd workshop-day1 && python kestrel.py reset && python kestrel.py attack a1
+cd ../workshop-day2 && python kestrel.py reset && python kestrel.py attack b1
 ```
+
+`a1` is the cross-tenant leak: the data-boundary light goes RED. `b1` is the one the Day 1
+promise pays off: every input control stays GREEN and the boundary goes RED anyway.
 
 | Risk | Mitigation |
 |---|---|
