@@ -25,6 +25,7 @@ are the teaching content it points into.
 | Lead instructor, first time | `../INSTRUCTORS.md` → `00` → `01` → `02` → `04` |
 | Co-instructor / second pair of hands | `00` → `04` → `05` |
 | Building on the Kestrel lab + console | `00` → `03` → `05` → `06`, then `../workshop-day1/README.md` |
+| Reading or reviewing the lab's code | `07`, then the files it anchors into |
 | Writing the MCQs | `01`, `02` (the "trap" callouts) → `04` (seed bank) |
 | A participant wanting the substance | `00` → `03` |
 
@@ -42,6 +43,9 @@ are the teaching content it points into.
   attack-swap mechanics, assessment rubric.
 - **`06-gaps-and-build-list.md`** — what is built (the labs), what is still to do, and
   defects in the decks worth fixing before the next run.
+- **`07-control-comparison.md`** — all 18 controls, vulnerable code left, secure code right,
+  quoted from the lab source. Also documents which controls are inert without another control
+  on, and which one is declared but unimplemented.
 
 ## Conventions
 
@@ -53,3 +57,5 @@ are the teaching content it points into.
   presented as the course's official position without the instructors' say-so.
 - Code in `03-security-reference.md` is **all `▸ Added`** unless quoted as a fragment from a
   slide. The decks carry signatures and three-line sketches, not working code.
+- Code in `07-control-comparison.md` is the exception: it is **quoted from the lab source**,
+  trimmed with `…`, with a `file:line` anchor on every excerpt.
