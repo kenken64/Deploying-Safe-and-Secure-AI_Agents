@@ -58,7 +58,7 @@ PROFILES: dict[str, list[str]] = {
 class Settings:
     llm_provider: str = os.getenv("LLM_PROVIDER", "mock")
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
-    model: str = os.getenv("KESTREL_MODEL", "openai/gpt-4.1-nano")
+    model: str = os.getenv("KESTREL_MODEL", "meta-llama/llama-3.1-8b-instruct")
     openrouter_base: str = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
     # llama3.1:8b lands all eight interior attacks. llama3.2:3b is half the
     # download but will not write the memory in b4 - see the README model table.

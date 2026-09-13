@@ -146,7 +146,7 @@ Three interchangeable providers; the header always says which is running.
 |---|---|---|---|
 | `mock` (default) | deterministic scripted stand-in, and a glass box - every decision says which words steered it | none | free |
 | `ollama` | a real model on your own laptop (`ollama pull llama3.1:8b`) | none | free |
-| `openrouter` | a real hosted model (`openai/gpt-4.1-nano`) | yes | ~$1-3 per class |
+| `openrouter` | a real hosted model (`meta-llama/llama-3.1-8b-instruct`) | yes | ~$1-3 per class |
 
 ```
 python kestrel.py model                      explain the active model

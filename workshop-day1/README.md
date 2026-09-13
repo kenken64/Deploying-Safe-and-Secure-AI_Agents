@@ -158,7 +158,7 @@ Hosted:
 
 ```
 export OPENROUTER_API_KEY=sk-or-...
-LLM_PROVIDER=openrouter KESTREL_MODEL=openai/gpt-4.1-nano python kestrel.py attack a2
+LLM_PROVIDER=openrouter KESTREL_MODEL=meta-llama/llama-3.1-8b-instruct python kestrel.py attack a2
 ```
 
 Or flip the switch live in the control room while the room is watching.

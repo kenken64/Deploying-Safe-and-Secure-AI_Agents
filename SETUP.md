@@ -12,7 +12,7 @@ Both workshops run from the same machine setup. Install once, both days work.
 | [VS Code](https://code.visualstudio.com/) + [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), **or** [GitHub Codespaces](https://github.com/features/codespaces) | - | **Yes** | Zero-install environment. Builds both labs for you. |
 | [Docker](https://www.docker.com/get-started/) | any recent | **Yes** | Runs the labs in containers; the fallback for locked-down laptops. |
 | [Ollama](https://ollama.com/download) | any recent | **Yes** | The real local model (`llama3.1:8b`) the attacks are also run against. |
-| [OpenRouter API key](https://openrouter.ai/keys) | - | Optional | A real hosted model (`openai/gpt-4.1-nano`). ~$1-3 per class. |
+| [OpenRouter API key](https://openrouter.ai/keys) | - | Optional | A real hosted model (`meta-llama/llama-3.1-8b-instruct`). ~$1-3 per class. |
 
 The labs' default model is the deterministic **mock**: no API key, no network. Both days
 run end to end on it - but Ollama is required so the same attacks can be run against a
@@ -145,7 +145,7 @@ Inside the dev container: run Ollama on your **host** - the container already po
 
 ```bash
 export OPENROUTER_API_KEY=sk-or-...
-LLM_PROVIDER=openrouter KESTREL_MODEL=openai/gpt-4.1-nano python kestrel.py attack a2
+LLM_PROVIDER=openrouter KESTREL_MODEL=meta-llama/llama-3.1-8b-instruct python kestrel.py attack a2
 ```
 
 ---
