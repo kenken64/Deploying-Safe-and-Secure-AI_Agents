@@ -55,6 +55,26 @@ python kestrel.py doctor
 It checks your Python version, the virtualenv, every dependency, the database, the model
 provider, and whether port 8000 is free - and tells you exactly what to fix.
 
+### Dev container - nothing to install at all
+
+If you have VS Code with the Dev Containers extension, or you open the repo in GitHub
+Codespaces, **just open the project**. You will be offered two configurations:
+
+| | |
+|---|---|
+| **Kestrel Goat - Day 1 (the edge)** | this lab |
+| Kestrel Goat - Day 2 (the interior) | tomorrow's |
+
+Pick Day 1. The container builds Python 3.12, installs both labs, seeds both databases,
+runs `doctor` on each and forwards port 8000. When it finishes it prints the first command
+to type. You never run `setup` yourself.
+
+Your host `.venv` is left alone: the container keeps its own in a named volume, so a
+virtualenv you built on macOS or Windows is not overwritten and does not leak in.
+
+To drive a real model from inside the container, run Ollama on your **host** - the
+container already points at `host.docker.internal`.
+
 ### Docker, if your laptop is locked down
 
 ```
@@ -147,7 +167,7 @@ Hosted:
 
 ```
 export OPENROUTER_API_KEY=sk-or-...
-LLM_PROVIDER=openrouter KESTREL_MODEL=openai/gpt-4.1-nano python kestrel.py attack a2
+LLM_PROVIDER=openrouter KESTREL_MODEL=meta-llama/llama-3.1-8b-instruct python kestrel.py attack a2
 ```
 
 Or flip the switch live in the control room while the room is watching.

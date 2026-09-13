@@ -108,12 +108,14 @@ will otherwise fail in the middle of your demo.
 
 ```
 export OPENROUTER_API_KEY=sk-or-...
-LLM_PROVIDER=openrouter KESTREL_MODEL=openai/gpt-4.1-nano python kestrel.py attack a2
+LLM_PROVIDER=openrouter KESTREL_MODEL=meta-llama/llama-3.1-8b-instruct python kestrel.py attack a2
 ```
 
-Roughly $1-3 for a whole class of 20. `gpt-4.1-nano` is the default: cheap, fast,
-non-reasoning, and reliable at tool calls. Reasoning models sometimes refuse the
-injection, which makes for a worse demo, not a safer agent.
+Roughly $1-3 for a whole class of 20. `llama-3.1-8b-instruct` is the default: cheap,
+fast, non-reasoning, and reliable at tool calls - and it is the hosted twin of the
+`llama3.1:8b` you can run locally, so the room sees the same model either way.
+Reasoning models sometimes refuse the injection, which makes for a worse demo, not a
+safer agent.
 
 ### Which to use when
 

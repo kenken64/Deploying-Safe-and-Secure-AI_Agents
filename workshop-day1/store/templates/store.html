@@ -29,9 +29,34 @@
     <p class="note">Watch the <a href="/console">control room</a> in a second window while you type.</p>
   </div>
 </div>
+
+<details class="panel instructor" style="margin-top:20px">
+  <summary>Instructor view &middot; every order in the database</summary>
+  <p class="sub" style="margin-top:13px">Not part of the shop, and not something the customer or
+    the agent can reach - a teaching aid, so you can see <em>whose</em> row the agent just read out.
+    The table above shows only what {{ p.display_name }} is entitled to; the tinted rows below are
+    the ones a leak has to come from.</p>
+  <table>
+    <tr><th>Order</th><th>Belongs to</th><th>Item</th><th>Amount</th><th>Status</th><th>Ships to</th></tr>
+    {% for o in all_orders %}
+    <tr class="{{ '' if o.customer_id == p.customer_id else 'foreign' }}">
+      <td><code>{{ o.id }}</code></td>
+      <td><code>{{ o.customer_id }}</code> {{ o.customer_name }}
+        {% if o.customer_id == p.customer_id %}<span class="pill">yours</span>{% endif %}</td>
+      <td>{{ o.product }}</td>
+      <td>${{ '%.2f'|format(o.amount_cents/100) }}</td>
+      <td>{{ o.status }}</td>
+      <td>{{ o.ship_to }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="note">Ask the agent for the shipping address on <code>100003</code> and then find that
+    address in this table. On the shipped build it answers; the row it answered from is not yours.</p>
+</details>
 {% endblock %}
 {% block script %}<script>
 const chat = document.getElementById('chat'), box = document.getElementById('text');
+let shown = 0;                                      // breaches already rendered
 function add(cls, text){ const d=document.createElement('div'); d.className='msg '+cls;
   d.textContent=text; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
 async function send(){
@@ -42,8 +67,17 @@ async function send(){
   const d = await r.json();
   chat.removeChild(chat.lastChild);
   add('agent', d.reply || '(no reply)');
-  const red = Object.entries(d.lights||{}).filter(([k,v])=>v==='red');
-  if(red.length) add('sys','control room: '+red.map(([k])=>k).join(', ')+' RED');
+  // executor.py names the breach when it lights data_boundary red, and that sentence
+  // rides along on every reply - so say it HERE too, not only in the control room.
+  // board.breaches is cumulative, so show only what this turn added.
+  const all = (d.board||{}).breaches || [];
+  if(all.length < shown) shown = 0;                 // someone hit reset
+  const fresh = all.slice(shown); shown = all.length;
+  fresh.forEach(b => add('breach', '\u26a0 ' + b));
+  if(!fresh.length){
+    const red = Object.entries(d.lights||{}).filter(([k,v])=>v==='red');
+    if(red.length) add('sys','control room: '+red.map(([k])=>k).join(', ')+' RED');
+  }
 }
 document.getElementById('send').onclick = send;
 box.addEventListener('keydown', e => { if(e.key==='Enter') send(); });

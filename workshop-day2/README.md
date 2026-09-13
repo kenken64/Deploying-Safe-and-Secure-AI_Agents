@@ -40,8 +40,14 @@ python kestrel.py setup       # venv + dependencies + seed the database
 python kestrel.py run         # then open http://127.0.0.1:8000/console
 ```
 
-Windows uses `python`; macOS and Linux may need `python3`. Docker, if the laptop is
-locked down:
+Windows uses `python`; macOS and Linux may need `python3`.
+
+**Or open the repo in a dev container** (VS Code with the Dev Containers extension, or
+GitHub Codespaces) and pick **Kestrel Goat - Day 2 (the interior)**. It installs both
+labs, seeds both databases and forwards port 8000; you never run `setup` yourself. Your
+host `.venv` is left alone - the container keeps its own in a named volume.
+
+Docker, if the laptop is locked down:
 
 ```
 docker build -t kestrel-goat-day2 . && docker run --rm -p 8000:8000 kestrel-goat-day2
@@ -162,7 +168,7 @@ Three interchangeable providers; the header always says which is running.
 |---|---|---|---|
 | `mock` (default) | deterministic scripted stand-in, and a glass box - every decision says which words steered it | none | free |
 | `ollama` | a real model on your own laptop (`ollama pull llama3.1:8b`) | none | free |
-| `openrouter` | a real hosted model (`openai/gpt-4.1-nano`) | yes | ~$1-3 per class |
+| `openrouter` | a real hosted model (`meta-llama/llama-3.1-8b-instruct`) | yes | ~$1-3 per class |
 
 ```
 python kestrel.py model                      explain the active model

@@ -125,7 +125,7 @@ one is running** - students never have to discover that the model is a stand-in.
 |---|---|---|---|---|
 | `mock` (default) | a scripted stand-in that follows instructions found anywhere in its context | none | free | **yes** |
 | `ollama` | a real model on the student's own laptop | none | free | no |
-| `openrouter` | a real hosted model (`openai/gpt-4.1-nano`) | yes | ~$1-3 per class | no |
+| `openrouter` | a real hosted model (`meta-llama/llama-3.1-8b-instruct`) | yes | ~$1-3 per class | no |
 
 The mock is the default because the vulnerability being taught is not *"the LLM is
 gullible"* - it is *"the system has no control that survives a gullible model."* So the
