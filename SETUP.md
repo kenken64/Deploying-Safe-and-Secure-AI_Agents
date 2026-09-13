@@ -9,13 +9,14 @@ Both workshops run from the same machine setup. Install once, both days work.
 | **[Python](https://www.python.org/downloads/)** | 3.10 or newer | **Yes - the only hard requirement** | Runs both labs. |
 | **[OpenCode](https://opencode.ai)** + **[Go subscription](https://opencode.ai/go?ref=2QN28RR7HV)** | latest | **Yes** | The agent students use in the workshops, on a real coding model. See below. |
 | [Git](https://git-scm.com/downloads) | any | Yes | Clone the repo; switch to `ollama-real-model-support`. |
-| [VS Code](https://code.visualstudio.com/) + [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), **or** [GitHub Codespaces](https://github.com/features/codespaces) | - | Optional path | Zero-install environment. Builds both labs for you. |
-| [Docker](https://www.docker.com/get-started/) | any recent | Optional path | For locked-down laptops that cannot install Python. |
-| [Ollama](https://ollama.com/download) | any recent | Optional | A real local model (`llama3.1:8b`). Not needed for the default mock. |
+| [VS Code](https://code.visualstudio.com/) + [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), **or** [GitHub Codespaces](https://github.com/features/codespaces) | - | **Yes** | Zero-install environment. Builds both labs for you. |
+| [Docker](https://www.docker.com/get-started/) | any recent | **Yes** | Runs the labs in containers; the fallback for locked-down laptops. |
+| [Ollama](https://ollama.com/download) | any recent | **Yes** | The real local model (`llama3.1:8b`) the attacks are also run against. |
 | [OpenRouter API key](https://openrouter.ai/keys) | - | Optional | A real hosted model (`openai/gpt-4.1-nano`). ~$1-3 per class. |
 
-The labs' default model is the deterministic **mock**: no API key, no network, no extra
-install. Both days run end to end on it.
+The labs' default model is the deterministic **mock**: no API key, no network. Both days
+run end to end on it - but Ollama is required so the same attacks can be run against a
+real model.
 
 ---
 
@@ -124,10 +125,10 @@ docker build -t kestrel-goat-day1 .
 docker run --rm -p 8000:8000 kestrel-goat-day1
 ```
 
-## Optional: a real local model (Ollama)
+## A real local model (Ollama)
 
-Only needed if you want to run the attacks against a real LLM. The mock is the default
-and is what both live demos use.
+The mock is the default and is what both live demos use, but the same attacks must also
+be run against a real model.
 
 ```bash
 ollama pull llama3.1:8b      # 4.9GB - pull it the week before, not on venue wifi
