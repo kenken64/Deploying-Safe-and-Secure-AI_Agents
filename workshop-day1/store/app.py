@@ -91,6 +91,12 @@ def home(request: Request):
     return templates.TemplateResponse(request, "store.html", {
         "p": p, "orders": orders,
         "customers": db.rows("SELECT * FROM customers"),
+        # Every order, with the customer it belongs to. The storefront shows this ONLY
+        # behind a collapsed "instructor view" - the shop itself must keep showing just
+        # what the signed-in customer is entitled to, or a1 has nothing left to reveal.
+        "all_orders": db.rows(
+            "SELECT o.*, c.name AS customer_name FROM orders o "
+            "LEFT JOIN customers c ON c.id = o.customer_id ORDER BY o.id"),
         "articles": db.rows("SELECT id, title FROM articles"),
         "badge": model_badge(),
     })

@@ -108,14 +108,86 @@ prompt. Not in the tool. In the layer underneath both, where a steered model can
 python kestrel.py attack a1 --control SECURE_TENANCY --control SECURE_TOOLS --control SECURE_EXECUTOR --control SECURE_AUTHZ
 ```
 
-or flip `SECURE_TENANCY` in the control room at `/console`.
+or flip `SECURE_TENANCY` **and** `SECURE_TOOLS` in the control room at `/console`. The next
+step is about why it takes both.
 
 ### Step 3. Understand why one control is not enough
 
-`SECURE_TENANCY` alone changes what the *data layer* returns. But `lookup_orders(sql: str)`
-still exists, so the model can still write `SELECT * FROM refunds`. That is `v05`.
-And the resource check that produces a clean refusal is `v04`. Defence in depth means
-all three, which is why the attack lists three controls.
+You just read the filter. Turn on **only** the filter and run the attack again:
+
+```
+python kestrel.py attack a1 --control SECURE_TENANCY
+```
+
+**It still lands.** The same leak, the same rows - Ben's order, his address, on Alice's
+screen. The runner drops the control you just turned on from its own advice:
+
+```
+  fix it with: SECURE_TOOLS, SECURE_AUTHZ
+```
+
+`secure_orders_for` is the filter, and the only things that call it are the narrow typed
+tools - `_t_get_order` and `_t_list_my_orders` in `agent/tools.py`. The tool the model is
+still holding is `lookup_orders`, and it has no such call:
+
+```python
+def _t_lookup_orders(args: dict, session: Session) -> ToolResult:
+    sql = str(args.get("sql", ""))
+    rows = db.vulnerable_query(sql)          # <-- never consults the filter
+```
+
+**A filter that nothing calls is not a control.**
+
+Now the other direction - narrow tools, filter off:
+
+```
+python kestrel.py attack a1 --control SECURE_TOOLS
+```
+
+Also still lands. The model is reduced to `get_order(order_id='ORD-100003')` and has no SQL
+left to write, which is real progress. But with `SECURE_TENANCY` off, that tool falls
+through to the unfiltered path and fetches the row by id with nobody's name on it:
+
+```python
+rows = (db.secure_orders_for(session.principal, oid) if settings.on("SECURE_TENANCY")
+        else db.vulnerable_query(f"SELECT * FROM orders WHERE id='{oid}'"))
+```
+
+**A typed tool that hands its argument to unfiltered SQL is not a control either.**
+
+Both together:
+
+```
+python kestrel.py attack a1 --control SECURE_TOOLS --control SECURE_TENANCY
+```
+
+```
+  tool       get_order -> No matching orders.
+  [ ok ]    data_boundary
+  attack stopped
+  stopped by: SECURE_TENANCY, SECURE_TOOLS
+```
+
+| `SECURE_TOOLS` | `SECURE_TENANCY` | `a1` |
+|---|---|---|
+| off | off | lands |
+| off | on | lands - **unchanged** |
+| on | off | lands |
+| on | on | **stopped** |
+
+So these two are not two layers of defence in depth over one hole. They are
+**jointly necessary**, because they answer different questions.
+`SECURE_TOOLS` decides **what the model is able to ask for**.
+`SECURE_TENANCY` decides **whose rows are allowed back**.
+The leak needs both answered, and either one alone leaves the other question open. That is
+why the attack names more than one control - not redundancy, but two halves of one fix.
+
+`SECURE_AUTHZ` is the third control the runner lists, and it is a genuine third layer
+rather than a third requirement: the two above already stop the leak. Look at what the
+hardened tool actually said - `No matching orders.` Correct, and silent. Nothing was
+logged as refused, and Alice cannot tell a row that does not exist from a row she may not
+see. `SECURE_AUTHZ` turns that into an explicit, logged refusal at the action itself.
+That is `v04`.
 
 ## 6. Prove it
 
