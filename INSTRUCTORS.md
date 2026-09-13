@@ -16,10 +16,15 @@ tell you more than an hour of reading.
 
 ```bash
 git clone <this repo> && cd secure-ai-agent
+git switch ollama-real-model-support     # the branch the course is taught from
 cd workshop-day1
 python kestrel.py setup        # venv + dependencies + seeded SQLite  (~1 min)
 python kestrel.py attack a1    # the breach the course opens on
 ```
+
+Or skip the install entirely: open the repo in VS Code with the Dev Containers extension,
+or in GitHub Codespaces, pick **Kestrel Goat - Day 1 (the edge)**, and it provisions both
+labs for you — see §5.
 
 Read the transcript. Alice Tan asked one ordinary question and got another customer's
 order, address and purchase back. Nothing was malformed. No CVE. Then:
@@ -127,6 +132,11 @@ cd ../workshop-day2 && python kestrel.py setup && python kestrel.py doctor
 `doctor` checks the Python version, the venv, every dependency, the database, the model
 provider and whether port 8000 is free — and tells you exactly what to fix. Both should
 end in `READY`.
+
+**Demo from a native checkout, not the dev container.** Not because the container is
+unreliable — it is tested, see below — but because on the morning you want the fewest
+moving parts between you and the projector, and a container that decides to rebuild at
+8:55 is one more. Use the container for participants and for your own second machine.
 
 ### What participants need
 
@@ -399,6 +409,11 @@ four are the ones that come up because of how the repo is built:
 | An attack stopped landing | `python kestrel.py reset`, then `python kestrel.py controls` |
 | A participant's build is unrecognisable | `git stash && python kestrel.py reset` |
 | Everything is broken | `python kestrel.py reset` reseeds from scratch |
+| Dev container: still building at 9am | It pulls a Python image on first create. Tell people to open it **the day before**; fall back to `python kestrel.py setup`, which needs no Docker. |
+| Dev container: `pip` permission denied | The `.venv` volume came up root-owned and the chown in `.devcontainer/setup.sh` did not run. Rebuild without cache, or `sudo chown -R vscode:vscode workshop-day*/.venv`. |
+| Dev container: stale packages after a `requirements.txt` change | The venv volume survives rebuilds by design. `docker volume rm kestrel-day1-venv kestrel-day2-venv`, then rebuild. |
+| Dev container: `LLM_PROVIDER=ollama` cannot reach Ollama | Ollama runs on the **host**, not in the container. Check it is listening on all interfaces, not just `127.0.0.1`. |
+| Dev container: wrong branch | The banner on create names the branch. `git switch ollama-real-model-support` and rebuild. |
 
 **Never deploy either lab anywhere.** They ship broken on purpose: unscoped SQL, a
 blank-cheque tool, seeded injection payloads, an SSRF gadget, an unguarded checkpoint
