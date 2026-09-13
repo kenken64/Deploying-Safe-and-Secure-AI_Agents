@@ -100,6 +100,20 @@ The three that carry the most weight, if you only read three:
 Do not put the branch name in the participant handout before the swap. It takes one
 person finding it to cost you the exercise.
 
+**How to show it without wrecking your own setup.** You will usually want the lab open at
+the same time — theirs to compare against, yours to diff. Two clean ways:
+
+```bash
+git worktree add ../kestrel-solution ollama-solution   # both branches, side by side
+cd ../kestrel-solution/workshop-day1 && python kestrel.py setup
+```
+
+(The worktree is a fresh checkout, so it needs its own `setup` — the `.venv` does not come
+with it.) Or open this branch in its own dev container. Its `.venv` lives in a named volume, so a
+native lab checkout on the same machine keeps working untouched while the answer key runs
+in the container. Either beats switching branches on the one checkout you are demoing
+from.
+
 ---
 
 ## 4. Grading with it
@@ -215,7 +229,6 @@ model of a support agent. Bind to `127.0.0.1`.
 | Symptom | Fix |
 |---|---|
 | `No .venv yet` | `python kestrel.py setup` |
-| Dev container: wrong branch's lab | The banner names the branch. `git switch ollama-real-model-support` and rebuild. |
 | `ModuleNotFoundError` | Stale checkout — `git pull`, then `python kestrel.py setup` |
 | `python: command not found` (macOS/Linux) | Use `python3` |
 | `Address already in use` | `python kestrel.py run --port 8010` |
@@ -223,3 +236,8 @@ model of a support agent. Bind to `127.0.0.1`.
 | `--secure` is not a flag | Correct. There is nothing to secure; it is already the build. |
 | A tutorial tells you to flip a control | Expected — see §6. The control is already in the code. |
 | Everything is broken | `python kestrel.py reset` reseeds from scratch |
+| Dev container: you provisioned the wrong branch | The create banner says which. It reads *"This is the answer key, not the lab"* here. `git switch ollama-real-model-support` and rebuild. |
+| Dev container: attacks all stop and you expected them to land | You are on this branch, and that is what it does. The demos live on the lab branch. |
+| Dev container: `pip` permission denied | The `.venv` volume came up root-owned and the chown in `.devcontainer/setup.sh` did not run. Rebuild without cache, or `sudo chown -R vscode:vscode workshop-day*/.venv`. |
+| Dev container: stale packages after a `requirements.txt` change | The venv volume survives rebuilds by design. `docker volume rm kestrel-day1-venv kestrel-day2-venv`, then rebuild. |
+| Dev container: `LLM_PROVIDER=ollama` cannot reach Ollama | Ollama runs on the **host**, not in the container. Check it is listening on all interfaces, not just `127.0.0.1`. |
