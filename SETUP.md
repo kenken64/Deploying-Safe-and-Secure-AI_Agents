@@ -9,6 +9,7 @@ Both workshops run from the same machine setup. Install once, both days work.
 | **[Python](https://www.python.org/downloads/)** | 3.10 or newer | **Yes - the only hard requirement** | Runs both labs. |
 | **[OpenCode](https://opencode.ai)** + **[Go subscription](https://opencode.ai/go?ref=2QN28RR7HV)** | latest | **Yes** | The agent students use in the workshops, on a real coding model. See below. |
 | [Git](https://git-scm.com/downloads) | any | Yes | Clone the repo; switch to `ollama-real-model-support`. |
+| [GitHub account](https://github.com/signup) | - | Yes | Clone the course repo, and sign in to GitHub Codespaces if you use it. Free. |
 | [VS Code](https://code.visualstudio.com/) + [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), **or** [GitHub Codespaces](https://github.com/features/codespaces) | - | **Yes** | Zero-install environment. Builds both labs for you. |
 | [Docker](https://www.docker.com/get-started/) | any recent | **Yes** | Runs the labs in containers; the fallback for locked-down laptops. |
 | [Ollama](https://ollama.com/download) | any recent | **Yes** | The real local model (`llama3.1:8b`) the attacks are also run against. |
